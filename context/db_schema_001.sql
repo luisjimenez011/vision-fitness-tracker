@@ -1,0 +1,26 @@
+-- Tabla de usuarios
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de rutinas
+CREATE TABLE routines (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  plan_json JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de logs de actividad
+CREATE TABLE activity_logs (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  routine_id INTEGER REFERENCES routines(id) ON DELETE SET NULL,
+  activity VARCHAR(255) NOT NULL,
+  performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
