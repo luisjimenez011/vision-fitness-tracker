@@ -1,12 +1,10 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
-
-// Componentes dummy
-const HomePage = () => <div>HomePage</div>
-const LoginPage = () => <div>LoginPage</div>
-const RegisterPage = () => <div>RegisterPage</div>
-const DashboardPage = () => <div>DashboardPage</div>
+import { useAuth } from '../context/AuthContext'
+import HomePage from '../pages/HomePage'
+import LoginPage from '../pages/LoginPage'
+import RegisterPage from '../pages/RegisterPage'
+import DashboardPage from '../pages/DashboardPage'
 
 function ProtectedRoute({ element }) {
   const { isAuthenticated } = useAuth()
