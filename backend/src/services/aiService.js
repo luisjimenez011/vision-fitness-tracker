@@ -17,7 +17,7 @@ async function generateRoutine(userProfile, goal) {
         const genAI = new GoogleGenAI({ apiKey });
         
         // El prompt incluye la estructura JSON
-        const prompt = `Eres un entrenador personal experto y responsable. Tu tarea es generar una rutina de entrenamiento de 4 a 5 días a la semana, adaptada al siguiente perfil y objetivo. La respuesta debe ser SOLO un objeto JSON que siga exactamente esta estructura:
+        const prompt = `Eres un entrenador personal experto y responsable. Tu tarea es generar una rutina de entrenamiento, adaptada al siguiente perfil y objetivo Teniendo en cuenta los datos proporcionados por el Usuario. La respuesta debe ser SOLO un objeto JSON que siga exactamente esta estructura:
 
 {
   "name": "string", 

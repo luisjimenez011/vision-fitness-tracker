@@ -11,11 +11,11 @@ class RoutineRepository {
    * @param {Object} planJson - Objeto JSON de la rutina
    * @returns {Promise<number>} ID de la rutina creada
    */
-  async create(userId, planJson) {
-    const query = `INSERT INTO routines (user_id, name, plan_json) VALUES ($1, $2, $3) RETURNING id`
-    const values = [userId, planJson.name, planJson]
-    const result = await pool.query(query, values)
-    return result.rows[0].id
+  async create(userId, name, planJson) {
+    const query = `INSERT INTO routines (user_id, name, plan_json) VALUES ($1, $2, $3) RETURNING id`;
+    const values = [userId, name, planJson];
+    const result = await pool.query(query, values);
+    return result.rows[0].id;
   }
 }
 
