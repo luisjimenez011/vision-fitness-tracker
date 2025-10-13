@@ -59,6 +59,39 @@ async function save(req, res) {
 }
 
 /**
+ * Obtiene una rutina específica por ID.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+async function getOne(req, res) {
+  const routineId = parseInt(req.params.routineId, 10);
+  const userId = req.userId; // Viene del token JWT
+
+  if (isNaN(routineId)) {
+    return res.status(400).json({ error: 'ID de rutina inválido.' });
+  }
+
+  try {
+    const routine = await routineRepository.findById(routineId);
+
+    if (!routine) {
+      return res.status(404).json({ error: 'Rutina no encontrada.' });
+    }
+
+    // CORRECCIÓN CRÍTICA: Convertir ambos a number para evitar fallos por tipos.
+    if (Number(routine.user_id) !== Number(userId)) { 
+      // Si la rutina se encuentra pero el usuario no es el dueño
+      return res.status(403).json({ error: 'Acceso denegado.' });
+    }
+
+    return res.status(200).json(routine);
+  } catch (err) {
+    console.error('Error al obtener la rutina:', err);
+    return res.status(500).json({ error: 'Error interno al obtener la rutina.' });
+  }
+}
+
+/**
  * Obtiene todas las rutinas del usuario autenticado.
  * @param {import('express').Request} req
  * @param {import('express').Response} res
@@ -79,4 +112,5 @@ module.exports = {
   generate,
   save,
   getMine,
+  getOne,
 }

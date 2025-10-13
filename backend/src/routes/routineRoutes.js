@@ -13,4 +13,7 @@ router.post('/save', authenticateToken, routineController.save);
 // Ruta protegida para obtener todas las rutinas guardadas por el usuario
 router.get('/my-routines', authenticateToken, routineController.getMine);
 
+// NUEVA RUTA: Ruta protegida para obtener una rutina específica por ID
+router.get('/:routineId', authenticateToken, routineController.getOne);
+
 module.exports = router;

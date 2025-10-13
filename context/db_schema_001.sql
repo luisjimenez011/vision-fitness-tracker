@@ -24,3 +24,15 @@ CREATE TABLE activity_logs (
   activity VARCHAR(255) NOT NULL,
   performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Tabla de logs de sesiones de entrenamiento
+CREATE TABLE workout_logs (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  routine_id INTEGER NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+  day_name VARCHAR(50),
+  duration_seconds INTEGER,
+  log_data JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
