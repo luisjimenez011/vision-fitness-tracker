@@ -17,6 +17,23 @@ class RoutineRepository {
     const result = await pool.query(query, values);
     return result.rows[0].id;
   }
+
+  /**
+   * Busca todas las rutinas de un usuario específico.
+   * @param {number} userId - ID del usuario.
+   * @returns {Promise<Array<Object>>} Un arreglo de objetos de rutina.
+   */
+  async findByUserId(userId) {
+    const query = `
+      SELECT id, name, created_at, plan_json 
+      FROM routines 
+      WHERE user_id = $1 
+      ORDER BY created_at DESC
+    `;
+    const values = [userId];
+    const result = await pool.query(query, values);
+    return result.rows;
+  }
 }
 
 module.exports = new RoutineRepository()

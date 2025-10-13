@@ -17,7 +17,7 @@ async function generate(req, res) {
 
     // --- CORRECCIÓN CLAVE ---
     // 1. Asegúrate de que routineJson tiene un campo 'routine_name'
-    const routineName = routineJson.routine_name || 'Rutina Generada'
+    const routineName = routineJson.name || 'Rutina Generada'; 
 
     // 2. Pasar los tres argumentos requeridos: userId, name, planJson
     await routineRepository.create(userId, routineName, routineJson) // -----------------------
@@ -58,7 +58,25 @@ async function save(req, res) {
   }
 }
 
+/**
+ * Obtiene todas las rutinas del usuario autenticado.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+async function getMine(req, res) {
+  const userId = req.userId; // Asumimos que el middleware de autenticación ya añadió esto
+
+  try {
+    const routines = await routineRepository.findByUserId(userId);
+    return res.status(200).json(routines);
+  } catch (err) {
+    console.error('Error al obtener las rutinas del usuario:', err);
+    return res.status(500).json({ error: 'Error interno al obtener las rutinas' });
+  }
+}
+
 module.exports = {
   generate,
   save,
+  getMine,
 }
