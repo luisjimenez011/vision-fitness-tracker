@@ -28,6 +28,25 @@ async function finishSession(req, res) {
   }
 }
 
+/**
+ * Obtiene el historial de entrenamientos del usuario autenticado.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+async function getLogs(req, res) {
+    const userId = req.userId; // Obtenido del token
+
+    try {
+        // Asume que findWorkoutLogsByUserId ya fue añadida a routineRepository.js
+        const logs = await routineRepository.findWorkoutLogsByUserId(userId);
+        return res.status(200).json(logs);
+    } catch (err) {
+        console.error('Error fetching workout logs:', err);
+        return res.status(500).json({ error: 'Internal server error while fetching workout logs.' });
+    }
+}
+
 module.exports = {
   finishSession,
+  getLogs,
 };

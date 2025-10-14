@@ -64,6 +64,19 @@ class RoutineRepository {
     const result = await pool.query(query, values);
     return result.rows[0].id;
   }
+
+  /**
+   * Busca todos los logs de entrenamiento de un usuario.
+   */
+  async findWorkoutLogsByUserId(userId) {
+    // Asegúrate de que esta query esté en una sola línea para evitar el error 42601
+    const query = 'SELECT id, routine_id, day_name, duration_seconds, log_data, created_at FROM workout_logs WHERE user_id = $1 ORDER BY created_at DESC';
+    const values = [userId];
+    const result = await pool.query(query, values);
+    return result.rows;
+  }
 }
+
+
 
 module.exports = new RoutineRepository()
