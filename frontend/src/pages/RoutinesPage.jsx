@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
 const RoutinesPage = () => {
@@ -46,37 +46,45 @@ const RoutinesPage = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
           {routines.map((routine) => (
-            <div key={routine.id} style={{
-              border: '1px solid #ccc',
-              borderRadius: '8px',
-              padding: '15px',
+            <Link to={`/routines/${routine.id}`} key={routine.id} style={{ 
+              textDecoration: 'none', 
+              color: 'inherit',
               width: '80%',
               maxWidth: '500px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
             }}>
-              <div>
-                <h3 style={{ margin: '0 0 10px 0' }}>{routine.name}</h3>
-                <p style={{ margin: 0, color: '#666' }}>
-                  Creada: {new Date(routine.created_at).toLocaleDateString()}
-                </p>
+              <div style={{
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                padding: '15px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <h3 style={{ margin: '0 0 10px 0' }}>{routine.name}</h3>
+                  <p style={{ margin: 0, color: '#666' }}>
+                    Creada: {new Date(routine.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleStartWorkout(routine.id);
+                  }}
+                  style={{
+                    padding: '10px 15px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Empezar Entrenamiento
+                </button>
               </div>
-              <button 
-                onClick={() => handleStartWorkout(routine.id)}
-                style={{
-                  padding: '10px 15px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer'
-                }}
-              >
-                Empezar Entrenamiento
-              </button>
-            </div>
+            </Link>
           ))}
         </div>
       )}

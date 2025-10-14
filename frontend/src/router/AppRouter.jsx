@@ -7,6 +7,7 @@ import RegisterPage from '../pages/RegisterPage';
 import DashboardPage from '../pages/DashboardPage';
 import RoutinesPage from '../pages/RoutinesPage';
 import TrackingPage from '../pages/TrackingPage';
+import RoutineDetailPage from '../pages/RoutineDetailPage';
 
 function ProtectedRoute({ element }) {
   const { isAuthenticated } = useAuth();
@@ -27,6 +28,7 @@ function AppRouter() {
       {/* Protected Routes */}
       <Route path="/dashboard" element={<ProtectedRoute element={<DashboardPage />} />} />
       <Route path="/routines" element={<ProtectedRoute element={<RoutinesPage />} />} />
+      <Route path="/routines/:routineId" element={<ProtectedRoute element={<RoutineDetailPage />} />} />
       <Route path="/track/:routineId" element={<ProtectedRoute element={<TrackingPage />} />} />
     </Routes>
   );
