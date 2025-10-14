@@ -11,10 +11,10 @@ function LoginPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (auth.isAuthenticated) {
-      navigate('/dashboard')
+    if (auth.isLoggedIn) {
+      navigate('/'), { replace: true }
     }
-  }, [auth.isAuthenticated, navigate])
+  }, [auth.isLoggedIn, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -22,7 +22,7 @@ function LoginPage() {
     try {
       const response = await apiClient.post('/auth/login', { email, password })
       auth.login(response.data.token)
-      navigate('/dashboard')
+      navigate('/')
     } catch (err) {
       if (err.response && err.response.data && err.response.data.error) {
         setError('Credenciales inválidas')

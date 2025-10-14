@@ -1,62 +1,63 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 function Navbar() {
-  // Simula el estado de autenticación. Inicializado en `true` por defecto.
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  // CORRECCIÓN: Usamos el estado global y la función de logout del AuthContext
+  const { isLoggedIn, logout } = useAuth();
+  const navigate = useNavigate();
 
-  // Simula la función de logout.
-  const handleLogout = () => {
-    console.log('Cerrando sesión...');
-    setIsLoggedIn(false); // Cambia el estado para mostrar Login/Register
-  };
+  const handleLogout = () => {
+    logout(); // Llama al método real del contexto
+    navigate('/login'); // Redirige al usuario
+  };
 
-  // Estilos en línea para la barra de navegación
-  const navStyle = {
-    backgroundColor: '#222',
-    padding: '1rem 2rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  };
+  // Estilos en línea para la barra de navegación
+  const navStyle = {
+    backgroundColor: '#222',
+    padding: '1rem 2rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  };
 
-  const linkStyle = {
-    color: 'white',
-    textDecoration: 'none',
-    margin: '0 10px',
-  };
+  const linkStyle = {
+    color: 'white',
+    textDecoration: 'none',
+    margin: '0 10px',
+  };
 
-  const buttonStyle = {
-    backgroundColor: '#555',
-    color: 'white',
-    border: 'none',
-    padding: '8px 12px',
-    cursor: 'pointer',
-    borderRadius: '4px',
-  };
+  const buttonStyle = {
+    backgroundColor: '#555',
+    color: 'white',
+    border: 'none',
+    padding: '8px 12px',
+    cursor: 'pointer',
+    borderRadius: '4px',
+  };
 
-  return (
-    <nav style={navStyle}>
-      {/* Sección Izquierda */}
-      <div>
-        <Link to="/" style={linkStyle}>Home</Link>
-        <Link to="/routines" style={linkStyle}>Rutinas</Link>
-        <Link to="/dashboard" style={linkStyle}>Dashboard</Link>
-      </div>
+  return (
+    <nav style={navStyle}>
+      {/* Sección Izquierda */}
+      <div>
+        <Link to="/" style={linkStyle}>Home</Link>
+        <Link to="/routines" style={linkStyle}>Rutinas</Link>
+        <Link to="/dashboard" style={linkStyle}>Dashboard</Link>
+      </div>
 
-      {/* Sección Derecha (Autenticación) */}
-      <div>
-        {isLoggedIn ? (
-          <button onClick={handleLogout} style={buttonStyle}>Logout</button>
-        ) : (
-          <>
-            <Link to="/login" style={linkStyle}>Login</Link>
-            <Link to="/register" style={linkStyle}>Register</Link>
-          </>
-        )}
-      </div>
-    </nav>
-  );
+      {/* Sección Derecha (Autenticación) */}
+      <div>
+        {isLoggedIn ? (
+          <button onClick={handleLogout} style={buttonStyle}>Logout</button>
+        ) : (
+          <>
+            <Link to="/login" style={linkStyle}>Login</Link>
+            <Link to="/register" style={linkStyle}>Register</Link>
+          </>
+        )}
+      </div>
+    </nav>
+  );
 }
 
 export default Navbar;

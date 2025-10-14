@@ -1,54 +1,53 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-// Asegúrate de que esta ruta sea correcta
 import apiClient from '../api/apiClient'; 
 
-// 1. Creación del Contexto
 const AuthContext = createContext();
 
-// Hook para usar la autenticación fácilmente
 export const useAuth = () => useContext(AuthContext);
 
-// 2. Componente Proveedor del Contexto
 export const AuthProvider = ({ children }) => {
-  // Estado inicial: comprueba si existe un token en localStorage
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); 
+  // Usamos isLoggedIn para coincidir con Navbar y ProtectedRoute
+  const [isLoggedIn, setIsLoggedIn] = useState(false); 
+  const [isLoading, setIsLoading] = useState(true); 
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
-  }, []);
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsLoggedIn(true);
+      // **CRÍTICO:** Configurar el header de Axios para futuras peticiones
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`; 
+    }
+    setIsLoading(false);
+  }, []);
 
-  // Función para Iniciar Sesión (guarda el token y actualiza el estado)
-  const login = (token) => {
-    localStorage.setItem('token', token);
-    setIsAuthenticated(true);
-  };
+  const login = (token) => {
+    localStorage.setItem('token', token);
+    setIsLoggedIn(true);
+    // Configurar el header inmediatamente después del login
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`; 
+  };
 
-  // Función para Cerrar Sesión (elimina el token y actualiza el estado)
-  const logout = () => {
-    localStorage.removeItem('token');
-    setIsAuthenticated(false);
-  };
+  const logout = () => {
+    localStorage.removeItem('token');
+    setIsLoggedIn(false);
+    // Eliminar el header de Axios al cerrar sesión
+    delete apiClient.defaults.headers.common['Authorization'];
+  };
 
-  const contextValue = {
-    isAuthenticated,
-    login,
-    logout,
-    isLoading,
-  };
+  const contextValue = {
+    isLoggedIn, // <-- Usamos isLoggedIn
+    login,
+    logout,
+    loading: isLoading, // <-- Mapeamos isLoading a loading para ProtectedRoute
+  };
 
-  if (isLoading) {
-    // Esto muestra un mensaje mientras verifica el token al inicio
-    return <div>Cargando autenticación...</div>;
-  }
+  if (isLoading) {
+    return <div>Cargando autenticación...</div>;
+  }
 
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

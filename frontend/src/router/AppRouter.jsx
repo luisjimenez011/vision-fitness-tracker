@@ -9,29 +9,37 @@ import RoutinesPage from '../pages/RoutinesPage';
 import TrackingPage from '../pages/TrackingPage';
 import RoutineDetailPage from '../pages/RoutineDetailPage';
 
+// Componente Protegido Corregido
 function ProtectedRoute({ element }) {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  // CORRECCIÓN: Usamos la clave 'isLoggedIn' (la convención establecida) y 'loading'
+  const { isLoggedIn, loading } = useAuth();
+  
+  if (loading) {
+    // Es crucial esperar a que el estado de autenticación se cargue
+    return <div style={{ textAlign: 'center', marginTop: '50px' }}>Verificando autenticación...</div>;
   }
-  return element;
+
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+  return element;
 }
 
 function AppRouter() {
-  return (
-    <Routes>
-      {/* AI Routine Generation */}
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
-      {/* Protected Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute element={<DashboardPage />} />} />
-      <Route path="/routines" element={<ProtectedRoute element={<RoutinesPage />} />} />
-      <Route path="/routines/:routineId" element={<ProtectedRoute element={<RoutineDetailPage />} />} />
-      <Route path="/track/:routineId" element={<ProtectedRoute element={<TrackingPage />} />} />
-    </Routes>
-  );
+      {/* Protected Routes */}
+      <Route path="/dashboard" element={<ProtectedRoute element={<DashboardPage />} />} />
+      <Route path="/routines" element={<ProtectedRoute element={<RoutinesPage />} />} />
+      <Route path="/routines/:routineId" element={<ProtectedRoute element={<RoutineDetailPage />} />} />
+      <Route path="/track/:routineId" element={<ProtectedRoute element={<TrackingPage />} />} />
+    </Routes>
+  );
 }
 
 export default AppRouter;
