@@ -36,15 +36,12 @@ const DayCard = ({ dayName, exercises }) => {
     <div style={cardStyle}>
       <h3 style={titleStyle}>{dayName}</h3>
       <ul style={exerciseListStyle}>
-        {/* Verifica que sea un array antes de mapear */}
         {Array.isArray(exercises) && exercises.length > 0 ? (
           exercises.map((exercise, index) => (
             <li key={index} style={exerciseItemStyle}>
-               {/* Usamos las propiedades probables del plan de la IA con fallbacks */}
-               <strong>{exercise.name || exercise.exercise_name}</strong> 
+               <strong>{exercise.name || 'Ejercicio Desconocido'}</strong> 
                <div>Sets: {exercise.sets || 'N/A'}</div>
-               <div>Reps: {exercise.reps_range || exercise.reps || 'N/A'}</div>
-               <div>Descanso: {exercise.rest_time_minutes || exercise.rest || 'N/A'}</div>
+               <div>Reps: {exercise.reps || 'N/A'}</div>
             </li>
           ))
         ) : (
@@ -69,7 +66,7 @@ const RoutineDetailPage = () => {
         
         const routineData = response.data;
         
-        // Deserialización segura: si plan_json viene como string, lo parseamos
+        // Deserialización segura
         let planJson = routineData.plan_json;
         if (typeof planJson === 'string') {
           planJson = JSON.parse(planJson);
@@ -101,30 +98,31 @@ const RoutineDetailPage = () => {
     return <div style={{ textAlign: 'center', marginTop: '50px' }}>No se encontró el plan de la rutina.</div>;
   }
   
-  // ESTO ES LA CORRECCIÓN CLAVE: Acceder al array 'workouts'
-  const workoutsArray = routine.plan_json.workouts;
+  // 🛑 CORRECCIÓN CLAVE: El plan_json ya viene con el array 'workouts' si es necesario (gracias al getOne del backend)
+  const workoutsArray = routine.plan_json.workouts || []; 
   
   if (!Array.isArray(workoutsArray) || workoutsArray.length === 0) {
     return (
       <div style={{ textAlign: 'center', marginTop: '50px' }}>
-        La rutina cargada no contiene un array de entrenamientos válido ('workouts').
+        No se encontraron sesiones de entrenamiento en esta rutina.
       </div>
     );
   }
 
+  // El nombre de la rutina (routine.name) ahora es el nombre combinado (ej: Plan - Día 1)
   return (
     <div style={{ padding: '20px', backgroundColor: '#f9f9f9', minHeight: '100vh' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>Plan: {routine.name || routine.plan_json.name}</h1>
+      <h1 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>{routine.name}</h1>
       <p style={{ textAlign: 'center', marginBottom: '30px', color: '#666' }}>
         {routine.plan_json.description || 'Sin descripción.'}
       </p>
       
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        {/* Mapear el array de días (workouts) */}
+        {/* Mapeamos el array de días (workouts), que ahora solo tendrá 1 elemento */}
         {workoutsArray.map((dayDetails, index) => (
           <DayCard 
             key={index} 
-            dayName={dayDetails.day_name} // El nombre del día
+            dayName={dayDetails.day} // Usamos 'day' (ej: Día 1: Torso)
             exercises={dayDetails.exercises} // La lista de ejercicios para ese día
           />
         ))}

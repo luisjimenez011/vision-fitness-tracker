@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
+// ... (style y MessageToast componentes se mantienen sin cambios)
 const style = {
   card: {
     border: '1px solid #e0e0e0',
@@ -46,7 +47,6 @@ const style = {
   },
 };
 
-// Componente simple de mensaje para evitar alert()
 const MessageToast = ({ message, type, onClose }) => {
   if (!message) return null;
 
@@ -89,7 +89,7 @@ const TrackingPage = () => {
   const [timer, setTimer] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [trackedSets, setTrackedSets] = useState([]);
-  const [inputs, setInputs] = useState({}); // { exerciseName: { weight: '', reps: '' } }
+  const [inputs, setInputs] = useState({}); 
   const [message, setMessage] = useState({ text: null, type: null });
 
   const showMessage = (text, type = 'success') => {
@@ -98,22 +98,21 @@ const TrackingPage = () => {
   };
 
   useEffect(() => {
-    // Aseguramos que solo cargue el primer día para simplificar el tracking
     const fetchRoutine = async () => {
       try {
-        // Llamada al nuevo endpoint GET /routine/:routineId
         const response = await apiClient.get(`/routine/${routineId}`);
         const fullRoutine = response.data;
-        setRoutine(fullRoutine);
+        setRoutine(fullRoutine); // Guarda el objeto completo (incluye el nombre general)
 
-        // Asumimos que la propiedad plan_json contiene el array de workouts
+        // 🛑 CORRECCIÓN CLAVE: Buscar el entrenamiento en el array 'workouts'
+        // Sabemos que 'workouts' solo tiene un elemento gracias al getOne del backend
         const workouts = fullRoutine.plan_json?.workouts;
         
         if (workouts && workouts.length > 0) {
-          // Por simplicidad, tomamos el primer día de la rutina
+          // Tomamos el primer y único día de la rutina
           setCurrentDayWorkout(workouts[0]);
         } else {
-          showMessage('La rutina no contiene entrenamientos.', 'error');
+          showMessage('El plan cargado no contiene ejercicios válidos para el seguimiento.', 'error');
         }
       } catch (error) {
         console.error('Error fetching routine:', error);
@@ -154,7 +153,6 @@ const TrackingPage = () => {
     
     const { weight, reps } = inputs[exerciseName] || { weight: '', reps: '' };
     
-    // Usamos regex para permitir solo números y puntos
     if (!/^\d+(\.\d+)?$/.test(weight) || !/^\d+$/.test(reps)) {
       showMessage('Introduce solo valores numéricos válidos para Peso y Repeticiones.', 'error');
       return;
@@ -166,13 +164,12 @@ const TrackingPage = () => {
       set: trackedSets.filter((s) => s.exerciseName === exerciseName).length + 1,
       weight: parseFloat(weight),
       reps: parseInt(reps, 10),
-      timestamp: new Date().toISOString() // Añadir marca de tiempo del set
+      timestamp: new Date().toISOString() 
     };
 
     setTrackedSets((prev) => [...prev, newSet]);
     showMessage(`Set ${newSet.set} de ${exerciseName} registrado.`, 'success');
     
-    // Limpiar inputs para ese ejercicio
     setInputs((prev) => ({
       ...prev,
       [exerciseName]: { weight: '', reps: '' },
@@ -187,8 +184,6 @@ const TrackingPage = () => {
 
     if (trackedSets.length === 0) {
       showMessage('No has registrado sets. ¿Seguro que quieres finalizar?', 'error');
-      // Aquí podríamos usar un modal de confirmación, pero por ahora solo es un aviso
-      // Volver a habilitar si el usuario quiere guardar
     }
     
     setIsRunning(false); // Detener cronómetro
@@ -203,7 +198,6 @@ const TrackingPage = () => {
 
       showMessage('¡Entrenamiento guardado con éxito!', 'success');
       
-      // Redirigir después de un pequeño retraso para ver el mensaje
       setTimeout(() => navigate('/dashboard'), 1500); 
 
     } catch (error) {
