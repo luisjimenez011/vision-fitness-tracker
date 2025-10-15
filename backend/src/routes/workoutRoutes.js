@@ -10,4 +10,7 @@ router.post('/finish-session', authenticateToken, workoutController.finishSessio
 // Ruta protegida para obtener el historial de entrenamientos
 router.get('/logs', authenticateToken, workoutController.getLogs);
 
+// Ruta protegida para obtener el análisis de volumen
+router.get('/progress/volume', authenticateToken, workoutController.getVolumeProgress);
+
 module.exports = router;

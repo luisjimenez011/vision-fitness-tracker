@@ -81,6 +81,66 @@ class RoutineRepository {
     const result = await pool.query(query, values)
     return result.rows
   }
+
+/**
+     * Obtiene el volumen agregado de los logs de entrenamiento de un usuario.
+     * Agrupa por Ejercicio y Mes/Año.
+     * @param {number} userId - ID del usuario
+     * @param {number} [daysBack=180] - Número de días a incluir en el análisis.
+     * @returns {Promise<Array<Object>>} Un arreglo de objetos de volumen agregado.
+     */
+    async getAggregatedVolumeLogs(userId, daysBack = 180) {
+        const dateLimit = new Date();
+        dateLimit.setDate(dateLimit.getDate() - daysBack);
+
+        const query = `
+            WITH sets_expanded AS (
+                SELECT
+                    wl.created_at,
+                    jsonb_array_elements(wl.log_data) as set_data 
+                FROM
+                    workout_logs wl
+                WHERE
+                    wl.user_id = $1 AND wl.created_at >= $2
+            )
+            SELECT
+                TO_CHAR(DATE_TRUNC('month', se.created_at), 'YYYY-MM') AS month_year,
+                (se.set_data ->> 'exerciseName') AS exercise_name,
+                -- 🛑 1. Volumen Total (igual que antes)
+                SUM(
+                    (se.set_data ->> 'weight')::NUMERIC * (se.set_data ->> 'reps')::NUMERIC
+                ) AS total_volume,
+                -- 🛑 2. Total de Repeticiones
+                SUM(
+                    (se.set_data ->> 'reps')::NUMERIC
+                ) AS total_reps,
+                -- 🛑 3. Peso Promedio (Volumen Total / Total de Repeticiones)
+                CASE 
+                    WHEN SUM((se.set_data ->> 'reps')::NUMERIC) > 0 
+                    THEN SUM((se.set_data ->> 'weight')::NUMERIC * (se.set_data ->> 'reps')::NUMERIC) / SUM((se.set_data ->> 'reps')::NUMERIC)
+                    ELSE 0
+                END AS average_weight
+            FROM
+                sets_expanded se
+            GROUP BY
+                month_year,
+                exercise_name
+            ORDER BY
+                month_year,
+                total_volume DESC;
+        `;
+        
+        const values = [userId, dateLimit.toISOString()];
+        const result = await pool.query(query, values);
+        
+        return result.rows.map(row => ({
+            monthYear: row.month_year,
+            exerciseName: row.exercise_name,
+            totalVolume: parseFloat(row.total_volume) || 0,
+            totalReps: parseFloat(row.total_reps) || 0,
+            averageWeight: parseFloat(row.average_weight) || 0 
+        }));
+    }
 }
 
 module.exports = new RoutineRepository()

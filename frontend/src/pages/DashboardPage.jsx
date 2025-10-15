@@ -2,90 +2,163 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient.js';
+import VolumeChart from '../components/VolumeChart.jsx'; // Asegúrate de que esta ruta es correcta
 
-/**
- * Calcula el volumen total levantado para un log de entrenamiento dado.
- * El logData es un objeto donde las claves son IDs de ejercicios y los valores son arrays de sets.
- * @param {Object} logData - El objeto log_data (JSON decodificado)
- * @returns {number} Volumen total en kg o libras.
- */
-const calculateTotalVolume = (logData) => {
-    let totalVolume = 0;
-
-    // logData es un objeto donde las claves son IDs de ejercicios
-    for (const exerciseId in logData) {
-        // exerciseSets es un array de sets registrados para un ejercicio
-        const exerciseSets = logData[exerciseId]; 
+// Función para transformar los datos del backend al formato de Recharts (ahora en el Dashboard)
+const transformVolumeData = (data) => {
+    const transformedData = {};
+    const exercises = new Set();
+    
+    data.forEach(item => {
+        const { monthYear, exerciseName, totalVolume } = item;
         
-        // Iterar sobre cada set registrado
-        // Se añade una verificación adicional para asegurar que logData es un objeto
-        if (Array.isArray(exerciseSets)) {
-            exerciseSets.forEach(set => {
-                // Asegúrate de que los sets tengan peso y repeticiones válidas y sean números
-                if (set.weight && set.reps && typeof set.weight === 'number' && typeof set.reps === 'number') {
-                    totalVolume += set.weight * set.reps;
-                }
-            });
+        // 1. Inicializa la entrada del mes si no existe
+        if (!transformedData[monthYear]) {
+            transformedData[monthYear] = { monthYear }; 
         }
-    }
-
-    return totalVolume;
+        
+        // 2. Asigna el volumen al nombre del ejercicio para esa clave
+        transformedData[monthYear][exerciseName] = totalVolume; 
+        exercises.add(exerciseName);
+    });
+    
+    // 3. Convierte el objeto a un array y ordena por mes/año
+    return { 
+        chartData: Object.values(transformedData).sort((a, b) => a.monthYear.localeCompare(b.monthYear)),
+        exerciseNames: Array.from(exercises)
+    };
 };
 
 
 function DashboardPage() {
     const auth = useAuth();
     const navigate = useNavigate();
+    
+    // Estados existentes para historial
     const [logs, setLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [loadingLogs, setLoadingLogs] = useState(true); // Renombrado para claridad
+    const [errorLogs, setErrorLogs] = useState(''); // Renombrado para claridad
 
+    // 🛑 NUEVOS ESTADOS PARA EL ANÁLISIS DE VOLUMEN
+    const [aiAnalysisText, setAiAnalysisText] = useState("Cargando análisis de rendimiento de IA...");
+    const [chartData, setChartData] = useState([]);
+    const [exerciseNames, setExerciseNames] = useState([]);
+    const [loadingAnalysis, setLoadingAnalysis] = useState(true);
+
+
+    // Effect para fetch del historial (puede mantenerse separado)
     useEffect(() => {
         const fetchLogs = async () => {
             try {
-                setLoading(true);
-                // Llama al endpoint GET /api/workout/logs
+                setLoadingLogs(true);
                 const response = await apiClient.get('/workout/logs');
                 setLogs(response.data);
             } catch (err) {
-                // Manejo de error específico (ej. si el token caducó o el servidor falla)
                 console.error('Error al cargar los logs de entrenamiento:', err);
-                setError('Error al cargar el historial. Asegúrate de estar conectado.');
+                setErrorLogs('Error al cargar el historial. Asegúrate de estar conectado.');
             } finally {
-                setLoading(false);
+                setLoadingLogs(false);
             }
         };
 
         fetchLogs();
     }, []);
 
+    // 🛑 NUEVO EFFECT PARA FETCH DE DATOS DE PROGRESO Y ANÁLISIS DE IA
+    useEffect(() => {
+        const fetchAnalysis = async () => {
+            try {
+                setLoadingAnalysis(true);
+                // 🛑 El endpoint ahora devuelve { volumeData, aiAnalysis }
+                const response = await apiClient.get('/workout/progress/volume');
+                const { volumeData, aiAnalysis } = response.data; 
+
+                // 1. Manejar el análisis de IA (es solo un string)
+                setAiAnalysisText(aiAnalysis); 
+                
+                // 2. Manejar los datos del gráfico
+                if (volumeData && volumeData.length > 0) {
+                    const { chartData: transformedChartData, exerciseNames: uniqueExercises } = transformVolumeData(volumeData);
+                    setChartData(transformedChartData);
+                    setExerciseNames(uniqueExercises);
+                } else {
+                    setChartData([]);
+                    setExerciseNames([]);
+                }
+
+            } catch (err) {
+                console.error('Error al cargar el análisis de volumen:', err);
+                setAiAnalysisText('Error al cargar el análisis de la IA. Inténtalo de nuevo más tarde.');
+            } finally {
+                setLoadingAnalysis(false);
+            }
+        };
+
+        fetchAnalysis();
+    }, []); 
+
+    // ... (Tu función handleLogout)
     const handleLogout = () => {
         auth.logout();
         navigate('/login');
     };
 
+
     return (
         <div style={{ textAlign: 'center', padding: '20px' }}>
-            <h1>Dashboard - Historial de Entrenamientos</h1>
-            {/* El botón de Logout debería estar en el Navbar, pero lo dejamos aquí por ahora */}
+            <h1>Dashboard</h1>
             <button onClick={handleLogout} style={{ marginBottom: '20px' }}>Cerrar Sesión</button>
+
+            {/* 🛑 PANEL DE ANÁLISIS DE IA */}
+            <div style={{ 
+                marginBottom: '40px', 
+                backgroundColor: '#000000ff', 
+                padding: '20px', 
+                borderRadius: '10px' 
+            }}>
+                <h2>🧠 Análisis de Rendimiento IA</h2>
+                {loadingAnalysis ? (
+                    <p>{aiAnalysisText}</p>
+                ) : (
+                    <div style={{ 
+                        textAlign: 'left', 
+                        // Permite que la IA use saltos de línea y Markdown, si aplica
+                        whiteSpace: 'pre-wrap', 
+                        lineHeight: '1.6',
+                        backgroundColor: '#000000ff',
+                        padding: '15px',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    }}>
+                        {aiAnalysisText}
+                    </div>
+                )}
+            </div>
             
-            {loading && <p>Cargando historial...</p>}
-            {error && <p style={{ color: 'red' }}>{error}</p>}
+            {/* 🛑 GRÁFICO DE VOLUMEN */}
+            <div style={{ marginBottom: '40px' }}>
+                <h2>📈 Progresión de Volumen (Últimos 6 Meses)</h2>
+                {loadingAnalysis ? (
+                    <p>Cargando gráfico...</p>
+                ) : (
+                    // Pasamos los datos ya transformados al componente VolumeChart
+                    <VolumeChart data={chartData} exerciseNames={exerciseNames} /> 
+                )}
+            </div>
             
-            {!loading && !error && (
+            {/* HISTORIAL DE ENTRENAMIENTOS */}
+            <h2>Historial de Entrenamientos</h2>
+            {loadingLogs && <p>Cargando historial...</p>}
+            {errorLogs && <p style={{ color: 'red' }}>{errorLogs}</p>}
+            
+            {!loadingLogs && !errorLogs && (
                 logs.length === 0 ? (
                     <p>No tienes entrenamientos registrados. ¡Empieza una rutina!</p>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <h2 style={{ marginBottom: '20px', fontSize: '1.5em' }}>Entrenamientos Recientes</h2>
-                        
                         {logs.map(log => {
                             const minutes = Math.floor(log.duration_seconds / 60);
                             const seconds = log.duration_seconds % 60;
-                            
-                            // 1. CÁLCULO DE VOLUMEN
-                            const volume = calculateTotalVolume(log.log_data); 
 
                             return (
                                 <div key={log.id} style={{ 
@@ -95,13 +168,11 @@ function DashboardPage() {
                                     margin: '10px 0', 
                                     width: '80%', 
                                     maxWidth: '600px',
-                                    textAlign: 'left' // Alineamos el contenido a la izquierda para mejor lectura
+                                    textAlign: 'left'
                                 }}>
                                     <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
                                         {log.day_name || `Rutina #${log.routine_id}`}
                                     </h3>
-                                    
-                                    <p><strong>Volumen Total:</strong> **{volume.toLocaleString()} kg**</p>
                                     <p><strong>Duración:</strong> {minutes} min {seconds} seg</p>
                                     <p><strong>Fecha:</strong> {new Date(log.created_at).toLocaleString()}</p>
                                 </div>
