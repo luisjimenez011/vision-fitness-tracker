@@ -16,4 +16,7 @@ router.get('/my-routines', authenticateToken, routineController.getMine);
 // NUEVA RUTA: Ruta protegida para obtener una rutina específica por ID
 router.get('/:routineId', authenticateToken, routineController.getOne);
 
+// NUEVA RUTA: Ruta protegida para actualizar una rutina por ID
+router.put('/:id', authenticateToken, routineController.updateRoutine);
+
 module.exports = router;

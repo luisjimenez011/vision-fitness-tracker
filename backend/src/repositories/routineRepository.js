@@ -93,8 +93,8 @@ class RoutineRepository {
    * @returns {Promise<Array<Object>>} Un arreglo de objetos de volumen agregado.
    */
   async getAggregatedVolumeLogs(userId, daysBack = 3650) {
-    const dateLimit = new Date();
-    dateLimit.setDate(dateLimit.getDate() - daysBack);
+    const dateLimit = new Date()
+    dateLimit.setDate(dateLimit.getDate() - daysBack)
 
     // 🛑 CONSULTA CORREGIDA: Sin indentación interna para evitar errores de sintaxis de PostgreSQL (código 42601)
     const query = `
@@ -129,19 +129,43 @@ exercise_name
 ORDER BY
 month_year,
 total_volume DESC;
-`;
+`
 
-    const values = [userId, dateLimit.toISOString()];
-    const result = await pool.query(query, values);
+    const values = [userId, dateLimit.toISOString()]
+    const result = await pool.query(query, values)
 
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       monthYear: row.month_year,
       exerciseName: row.exercise_name,
       totalVolume: parseFloat(row.total_volume) || 0,
       totalReps: parseFloat(row.total_reps) || 0,
-      averageWeight: parseFloat(row.average_weight) || 0
-    }));
+      averageWeight: parseFloat(row.average_weight) || 0,
+    }))
   }
+  
+  /**
+     * Actualiza el plan_json y el nombre de una rutina existente.
+     * Dado que la tabla no tiene 'updated_at', solo actualizamos 'name' y 'plan_json'.
+     * @param {number} routineId - ID de la rutina a actualizar
+     * @param {string} name - Nuevo nombre de la rutina
+     * @param {Object} planJson - Objeto JSON completo de la rutina
+     * @returns {Promise<Object>} La rutina actualizada o null si no se encuentra.
+     */
+    async updatePlanJson(routineId, name, planJson) {
+        const query = `
+            UPDATE routines
+            SET name = $2, plan_json = $3
+            WHERE id = $1
+            RETURNING id, name, plan_json, created_at, user_id;
+            -- Devolvemos created_at en lugar de updated_at, ya que no existe.
+        `;
+        
+        const values = [routineId, name, planJson]; 
+        
+        const result = await pool.query(query, values);
+        
+        return result.rows[0] || null;
+    }
 }
 
 module.exports = new RoutineRepository()

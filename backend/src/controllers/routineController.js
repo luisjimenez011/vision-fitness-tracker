@@ -153,9 +153,57 @@ async function getMine(req, res) {
   }
 }
 
+/**
+ * Actualiza el plan_json y el nombre de una rutina existente.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @returns {Promise<void>}
+ */
+async function updateRoutine(req, res) {
+    try {
+        const routineId = parseInt(req.params.id, 10);
+        const userId = req.userId;
+        // Esperamos que el frontend envíe el nuevo nombre y el plan JSON completo
+        const { name, plan_json } = req.body; 
+
+        if (isNaN(routineId) || !name || !plan_json) {
+            return res.status(400).json({ message: 'ID de rutina, nombre y plan JSON son obligatorios.' });
+        }
+        
+        // 1. Verificación de propiedad (opcional pero muy recomendable)
+        const routineCheck = await routineRepository.findById(routineId);
+        if (!routineCheck || Number(routineCheck.user_id) !== Number(userId)) {
+            return res.status(403).json({ error: 'Acceso denegado o rutina no encontrada.' });
+        }
+
+
+        // 2. Actualizar en el repositorio
+        const updatedRoutine = await routineRepository.updatePlanJson(
+            routineId,
+            name,
+            plan_json
+        );
+
+        if (!updatedRoutine) {
+            // Esto solo ocurriría si findById pasara y updatePlanJson fallara, pero es bueno tenerlo
+            return res.status(404).json({ message: 'Rutina no encontrada o fallo en la actualización.' });
+        }
+
+        res.status(200).json({ 
+            message: 'Rutina actualizada con éxito.', 
+            routine: updatedRoutine 
+        });
+
+    } catch (error) {
+        console.error('Error al actualizar rutina:', error);
+        res.status(500).json({ message: 'Error interno del servidor al actualizar la rutina.' });
+    }
+}
+
 module.exports = {
   generate,
   save,
   getMine,
   getOne,
+  updateRoutine,
 }

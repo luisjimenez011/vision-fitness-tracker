@@ -8,6 +8,7 @@ import DashboardPage from '../pages/DashboardPage';
 import RoutinesPage from '../pages/RoutinesPage';
 import TrackingPage from '../pages/TrackingPage';
 import RoutineDetailPage from '../pages/RoutineDetailPage';
+import RoutineEditPage from '../pages/RoutineEditPage';
 
 // Componente Protegido Corregido
 function ProtectedRoute({ element }) {
@@ -38,6 +39,7 @@ function AppRouter() {
       <Route path="/routines" element={<ProtectedRoute element={<RoutinesPage />} />} />
       <Route path="/routines/:routineId" element={<ProtectedRoute element={<RoutineDetailPage />} />} />
       <Route path="/track/:routineId" element={<ProtectedRoute element={<TrackingPage />} />} />
+      <Route path="/routine/edit/:routineId" element={<RoutineEditPage />} />
     </Routes>
   );
 }
