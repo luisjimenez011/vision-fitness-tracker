@@ -139,8 +139,111 @@ async function analyzeVolumeProgress(aggregatedVolumeData, userProfile) {
     }
 }
 
+/**
+ * [NUEVA FUNCIÓN AUXILIAR] Utiliza la IA para clasificar dinámicamente una lista de ejercicios
+ * en grupos musculares principales.
+ * @param {Array<string>} uniqueExerciseNames - Lista de nombres de ejercicios únicos.
+ * @returns {Promise<Object>} Objeto JSON mapeando { "Ejercicio": "GrupoMuscular" }.
+ */
+async function classifyExercisesByMuscle(uniqueExerciseNames) {
+    const genAI = getGeminiClient();
+
+    const muscleGroups = [
+        "Pecho", "Espalda", "Piernas", "Hombros", "Bíceps", "Tríceps", "Core", "Cardio", "Otros"
+    ];
+
+    const prompt = `
+        Eres un experto en biomecánica y fitness.
+        Tu tarea es clasificar la siguiente lista de nombres de ejercicios en los grupos musculares principales proporcionados.
+
+        INSTRUCCIONES CLAVE:
+        1. La respuesta debe ser SOLO un objeto JSON. NO incluyas explicaciones ni texto adicional.
+        2. El objeto JSON debe tener el formato: { "NombreDelEjercicio": "GrupoMuscular" }.
+        3. Si un ejercicio trabaja varios grupos, clasifícalo en el grupo PRIMARIO.
+        4. Si es un ejercicio de acondicionamiento (correr, saltar la cuerda), usa "Cardio". Si es irrelevante, usa "Otros".
+
+        GRUPOS MUSCULARES PERMITIDOS: ${muscleGroups.join(', ')}
+
+        LISTA DE EJERCICIOS A CLASIFICAR:
+        ${JSON.stringify(uniqueExerciseNames)}
+    `;
+
+    const response = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+            responseMimeType: 'application/json',
+            temperature: 0.1, // Baja temperatura para una clasificación precisa
+        },
+    });
+
+    const jsonString = response.text.trim();
+    return JSON.parse(jsonString); // Esto será el MUSCLE_MAP dinámico
+}
+
+/**
+ * Procesa el volumen agregado, clasifica los ejercicios usando IA, y genera un análisis.
+ * @param {Array<Object>} aggregatedVolume - Datos de volumen por ejercicio (del repositorio)
+ * @returns {Promise<{muscleVolume: Object, aiAnalysis: string}>}
+ */
+async function analyzeMuscleMap(aggregatedVolume) {
+    if (!aggregatedVolume || aggregatedVolume.length === 0) {
+        return { muscleVolume: {}, aiAnalysis: "No hay datos de volumen para analizar." };
+    }
+
+    // 1. Obtener la lista única de ejercicios del log
+    const uniqueExerciseNames = [...new Set(aggregatedVolume.map(item => item.exerciseName))];
+
+    // 2. Usar la IA para clasificar estos ejercicios dinámicamente
+    // Esto genera un mapeo { "Press Banca con Pausa": "Pecho", "Sentadilla Bulgara": "Piernas" }
+    let dynamicMuscleMap;
+    try {
+        dynamicMuscleMap = await classifyExercisesByMuscle(uniqueExerciseNames);
+    } catch (e) {
+        console.error("Fallo al clasificar ejercicios con IA:", e);
+        // Fallback: Si la IA falla, usamos un mapeo por defecto o marcamos todo como 'Otros'
+        dynamicMuscleMap = uniqueExerciseNames.reduce((map, name) => ({ ...map, [name]: 'Otros' }), {});
+    }
+
+    // 3. Mapeo de Volumen por Músculo usando el mapa dinámico
+    const muscleVolume = {};
+    let totalGlobalVolume = 0;
+
+    aggregatedVolume.forEach(item => {
+        const exerciseName = item.exerciseName;
+        // Usa el mapeo dinámico, o 'Otros' si la IA no lo clasificó
+        const muscleGroup = dynamicMuscleMap[exerciseName] || 'Otros'; 
+        const volume = item.totalVolume;
+
+        muscleVolume[muscleGroup] = (muscleVolume[muscleGroup] || 0) + volume;
+        totalGlobalVolume += volume;
+    });
+
+    // 4. Análisis de IA (Simulado o mejorado con IA)
+    let analysisMessage = "Tu entrenamiento este mes ha sido **equilibrado** en los grupos musculares principales.";
+
+    const pechoVolume = muscleVolume['Pecho'] || 0;
+    const piernasVolume = muscleVolume['Piernas'] || 0;
+    const espaldaVolume = muscleVolume['Espalda'] || 0;
+
+    if (totalGlobalVolume === 0) {
+        analysisMessage = "No hay datos de entrenamiento suficientes para analizar el mapa muscular.";
+    } else if (piernasVolume < pechoVolume * 0.7) {
+        analysisMessage = "Observamos un posible **desequilibrio**. El volumen de **Piernas** es bajo en comparación con el **Pecho**. Prioriza el tren inferior.";
+    } else if (pechoVolume > espaldaVolume * 1.5) {
+        analysisMessage = "Tienes una ligera tendencia a la **descompensación**. Tu volumen de **Pecho** es mayor que el de **Espalda**. Aumenta tu trabajo de tracción.";
+    }
+
+    return {
+        muscleVolume: muscleVolume,
+        aiAnalysis: analysisMessage
+    };
+}
+
 
 module.exports = {
   generateRoutine,
   analyzeVolumeProgress,
+  classifyExercisesByMuscle,
+  analyzeMuscleMap,
 }

@@ -47,6 +47,7 @@ function Navbar() {
 
       {/* Sección Derecha (Autenticación) */}
       <div>
+           <Link to="/profile" style={linkStyle}>Perfil</Link>
         {isLoggedIn ? (
           <button onClick={handleLogout} style={buttonStyle}>Logout</button>
         ) : (
