@@ -19,4 +19,7 @@ router.get('/:routineId', authenticateToken, routineController.getOne);
 // NUEVA RUTA: Ruta protegida para actualizar una rutina por ID
 router.put('/:id', authenticateToken, routineController.updateRoutine);
 
+//  NUEVA RUTA: Ruta protegida para eliminar una rutina por ID
+router.delete('/:id', authenticateToken, routineController.deleteRoutine);
+
 module.exports = router;

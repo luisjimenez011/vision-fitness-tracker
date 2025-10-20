@@ -142,7 +142,7 @@ total_volume DESC;
       averageWeight: parseFloat(row.average_weight) || 0,
     }))
   }
-  
+
   /**
      * Actualiza el plan_json y el nombre de una rutina existente.
      * Dado que la tabla no tiene 'updated_at', solo actualizamos 'name' y 'plan_json'.
@@ -165,6 +165,18 @@ total_volume DESC;
         const result = await pool.query(query, values);
         
         return result.rows[0] || null;
+    }
+
+    /**
+     * Elimina una rutina por su ID.
+     * @param {number} routineId - ID de la rutina a eliminar
+     * @returns {Promise<number>} Número de filas eliminadas (0 o 1)
+     */
+    async deleteById(routineId) {
+        const query = 'DELETE FROM routines WHERE id = $1 RETURNING id';
+        const values = [routineId];
+        const result = await pool.query(query, values);
+        return result.rowCount; // 1 si se eliminó, 0 si no se encontró
     }
 }
 
