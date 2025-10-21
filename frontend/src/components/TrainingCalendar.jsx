@@ -1,10 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-// Eliminamos la importación de apiClient, ya que ahora recibimos los datos por props
-// import apiClient from '../api/apiClient'; 
+import React, { useState, useMemo } from 'react';
 
 // ⬇️ IMPORTACIONES DE MUI & MUI X
 import {
-    // Importaciones necesarias de MUI para el diseño del calendario y el modal
     Container,
     Typography,
     Box,
@@ -23,16 +20,16 @@ import { DateCalendar, LocalizationProvider, PickersDay } from '@mui/x-date-pick
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale'; 
 
-// Iconos MUI (Mantenidos)
+// Iconos MUI
 import CloseIcon from '@mui/icons-material/Close';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 
+
 // ------------------------------------------------------------------
-// 🛑 Panel de Contenido del Modal (Mantenido)
+// Panel de Contenido del Modal (SelectedDayPanel)
 // ------------------------------------------------------------------
-// *Mantendremos el SelectedDayPanel idéntico para no repetir código*
 const SelectedDayPanel = ({ log, onClose }) => {
     if (!log) return null;
 
@@ -113,6 +110,7 @@ const SelectedDayPanel = ({ log, onClose }) => {
                                             {data.reps} reps @ {data.weight}{data.isBodyweight ? ' BW' : ' kg'}
                                         </Typography>
                                     </ListItem>
+                                    {/* Divisor */}
                                     {index < totalSets - 1 && <Divider component="li" sx={{ borderColor: 'grey.700' }} />}
                                 </React.Fragment>
                             ))}
@@ -142,53 +140,55 @@ const SelectedDayPanel = ({ log, onClose }) => {
 
 
 // ------------------------------------------------------------------
-// 🛑 Componente Principal TrainingCalendar
+// Componente Principal TrainingCalendar
 // ------------------------------------------------------------------
-// 🔑 Acepta logs y estados de carga como props
 const TrainingCalendar = ({ logs = [], loading }) => {
-    // Eliminamos el estado allLogs y trainedDates, que se calcularán a partir de logs.
     const [selectedDate, setSelectedDate] = useState(null); 
     const [selectedLog, setSelectedLog] = useState(null); 
 
-    // --- Funciones de formato de fecha (Lógica clave UTC) ---
+    // --- Funciones de formato de fecha (Lógica clave) ---
 
-    // Función para obtener el día YYYY-MM-DD del log usando UTC para evitar desfase de zona horaria
-    const formatDateToDayFromDb = (dateString) => {
-        if (!dateString) return null;
+    // 🟢 FUNCIÓN CORREGIDA Y ROBUSTA: Convierte cualquier fecha/string a un string "YYYY-MM-DD" basado en la HORA LOCAL.
+    const getLocalDayString = (dateInput) => {
+        if (!dateInput) return null;
         
-        // Añade 'T00:00:00Z' si no es un formato ISO completo para forzar la interpretación UTC 
-        // y evitar el desfase por zona horaria local.
-        const dateToParse = dateString.includes('T') ? dateString : dateString + 'T00:00:00Z';
-        const dateObject = new Date(dateToParse); 
+        let dateObject;
+
+        // Si el input es un string de la BD ('YYYY-MM-DD HH:MM:SS.ms'), lo convertimos primero
+        if (typeof dateInput === 'string') {
+            // Intentamos limpiar y tratar el string.
+            let dateToParse = dateInput.trim().replace(' ', 'T');
+            if (dateToParse.includes('.')) {
+                 dateToParse = dateToParse.split('.')[0]; 
+            }
+            // new Date() sin 'Z' al final lo interpreta como hora local (o desconocida).
+            dateObject = new Date(dateToParse);
+
+        // Si es un objeto Date (del calendario), lo usamos directamente
+        } else if (dateInput instanceof Date) {
+            dateObject = dateInput;
+        } else {
+            return null;
+        }
         
         if (isNaN(dateObject.getTime())) return null;
 
-        // Usamos las funciones UTC para extraer el día
-        const year = dateObject.getUTCFullYear();
-        const month = String(dateObject.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(dateObject.getUTCDate()).padStart(2, '0');
-
-        return `${year}-${month}-${day}`; // Formato: 2025-10-21
+        // Usamos funciones locales para obtener el día tal como se ve en la zona horaria del usuario.
+        // Formato: 2025-10-07
+        return `${dateObject.getFullYear()}-${String(dateObject.getMonth() + 1).padStart(2, '0')}-${String(dateObject.getDate()).padStart(2, '0')}`; 
     };
 
-    // Función para formatear la fecha del objeto Date del calendario (usa hora local del usuario)
-    const formatDateObjectToDay = (dateObject) => {
-        const year = dateObject.getFullYear();
-        const month = String(dateObject.getMonth() + 1).padStart(2, '0');
-        const day = String(dateObject.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`; // Formato: 2025-10-21
-    }
 
-    // 🔑 PROCESAMIENTO DE DATOS CON useMemo
-    // Esto se ejecuta solo cuando la prop 'logs' cambia.
+    // 🟢 PROCESAMIENTO DE DATOS CON useMemo
     const { allLogsProcessed, trainedDates } = useMemo(() => {
         if (!logs || logs.length === 0) {
             return { allLogsProcessed: [], trainedDates: [] };
         }
         
         const processedLogs = logs.map(log => {
-            const dateString = formatDateToDayFromDb(log.created_at);
-            // Aseguramos que log_data sea un objeto/array
+            // Usamos la función LocalDayString para obtener el día del log de la DB
+            const dateString = getLocalDayString(log.created_at); 
+            
             const parsedLogData = typeof log.log_data === 'string' && log.log_data.length > 0
                 ? JSON.parse(log.log_data)
                 : (log.log_data || []);
@@ -196,24 +196,24 @@ const TrainingCalendar = ({ logs = [], loading }) => {
             return { ...log, dateString, log_data: parsedLogData };
         });
         
-        // Crea un array único de las fechas que tienen logs (formato YYYY-MM-DD UTC)
+        // Crea un array único de las fechas que tienen logs (formato YYYY-MM-DD LOCAL)
         const allMappedDates = processedLogs.map(log => log.dateString);
         const uniqueDates = [...new Set(allMappedDates)].filter(Boolean);
 
         return { allLogsProcessed: processedLogs, trainedDates: uniqueDates };
-    }, [logs]); // Se recalcula si la prop 'logs' cambia
+    }, [logs]);
 
 
     // --- Manejador de Eventos para el Calendario de MUI X ---
     const handleDayClick = (date) => {
+        // 'date' es el objeto Date que devuelve el calendario (hora local)
         setSelectedDate(date); 
         
-        // Usamos la hora local para formatear la fecha del día clicado
-        const dayString = formatDateObjectToDay(date);
+        // Obtenemos la fecha del día clicado en formato YYYY-MM-DD LOCAL
+        const dayStringForComparison = getLocalDayString(date);
 
-        // Busca el log correspondiente al día formateado 
-        // Usamos find() para encontrar el primer log de ese día (si hay varios)
-        const logForDay = allLogsProcessed.find(log => log.dateString === dayString);
+        // Buscamos el log con esa fecha de entrenamiento (YYYY-MM-DD LOCAL)
+        const logForDay = allLogsProcessed.find(log => log.dateString === dayStringForComparison);
         
         setSelectedLog(logForDay || null);
     };
@@ -222,35 +222,51 @@ const TrainingCalendar = ({ logs = [], loading }) => {
         setSelectedLog(null);
     };
 
-    // --- 🔑 Lógica de Coloreado (renderDay) ---
-    const renderDay = (day, selectedDays, pickersDayProps) => {
-        // Obtenemos el día formateado por el calendario (local)
-        const dayString = formatDateObjectToDay(day);
+    // ------------------------------------------------------------------
+    // --- 🔑 Lógica de Coloreado (renderDay) - CON COLOR ROSA
+    // ------------------------------------------------------------------
+    const renderDay = (dayProps) => {
         
-        // 🔑 Comprobamos si el día local del calendario existe en la lista de fechas entrenadas (UTC-ajustado)
+        // 🔑 Destructuramos de forma segura los props necesarios
+        const { day, outsideCurrentMonth: isOutsideMonth, ...pickersDayProps } = dayProps;
+
+        // 🛑 Verificación de día inválido
+        if (!day || !(day instanceof Date) || isNaN(day.getTime())) {
+            return <PickersDay {...dayProps} disableMargin day={day} />;
+        }
+        
+        // Obtenemos el día formateado por el calendario (YYYY-MM-DD LOCAL)
+        const dayString = getLocalDayString(day);
+        
+        // Comprobamos si el día existe en la lista de fechas entrenadas (YYYY-MM-DD LOCAL)
         const isTrained = trainedDates.includes(dayString);
         
-        // Comprobamos si es el día actualmente seleccionado (para el borde naranja)
-        const isSelectedForDetails = selectedDate && formatDateObjectToDay(selectedDate) === dayString;
+        // Comprobamos si es el día actualmente seleccionado
+        const isSelectedForDetails = selectedDate && getLocalDayString(selectedDate) === dayString;
         
-        const isOutsideMonth = pickersDayProps.outsideCurrentMonth;
-
+        // ** COLORES **
+        // 🚀 USAMOS LA PALETA SECONDARY (AHORA ROSA EN theme.js)
+        const trainedColor = 'secondary.dark'; 
+        const trainedHover = 'secondary.main'; 
+        // 🚀 FIN DEL CAMBIO
+        
         return (
             <PickersDay 
                 {...pickersDayProps} 
                 disableMargin 
+                day={day} // Asegúrate de pasar el objeto `day` original
                 sx={{
                     // Colorear SOLO días dentro del mes que están entrenados
                     ...(!isOutsideMonth && isTrained && {
-                        backgroundColor: 'success.dark',
+                        backgroundColor: trainedColor, // ⬅️ Color Rosa Aplicado
                         color: 'white',
                         fontWeight: 'bold',
                         '&:hover': {
-                            backgroundColor: 'success.main',
+                            backgroundColor: trainedHover, 
                         },
-                        // Mantenemos el fondo de éxito si el día actual está entrenado
+                        // Mantenemos el fondo del día entrenado si es seleccionado
                         '&.Mui-selected': { 
-                            backgroundColor: 'success.dark',
+                            backgroundColor: trainedColor,
                         },
                     }),
                     
@@ -258,8 +274,8 @@ const TrainingCalendar = ({ logs = [], loading }) => {
                     ...(!isOutsideMonth && isSelectedForDetails && {
                         border: '3px solid',
                         borderColor: 'warning.main', 
-                        padding: 'calc(10px - 3px)', // Ajustar padding
-                        // Si no está entrenado, le damos un fondo oscuro para contrastar el borde
+                        padding: 'calc(10px - 3px)', 
+                        
                         ...(!isTrained && {
                             backgroundColor: 'grey.700',
                             color: 'white',
@@ -272,7 +288,7 @@ const TrainingCalendar = ({ logs = [], loading }) => {
                          backgroundColor: 'transparent',
                     },
                     
-                    // Estilo base para días no entrenados pero seleccionados (borde azul oscuro por defecto de MUI)
+                    // Estilo base para días no entrenados pero seleccionados
                     '&.Mui-selected:not(.MuiPickersDay-dayOutsideMonth)': {
                         ...(!isTrained && {
                             backgroundColor: 'primary.dark',
@@ -295,7 +311,6 @@ const TrainingCalendar = ({ logs = [], loading }) => {
     
     return (
         <Container 
-            // Quitamos maxWidth, minHeight, y colores de fondo/texto ya definidos en el padre (Card)
             component="main" 
             sx={{ 
                 py: 2, 
@@ -304,15 +319,14 @@ const TrainingCalendar = ({ logs = [], loading }) => {
                 alignItems: 'center',
             }}
         >
-            
             <Box sx={{ 
                 width: '100%', 
                 maxWidth: 600, 
                 p: 2, 
-                bgcolor: 'grey.800', // Un fondo diferente dentro de la Card
+                bgcolor: 'grey.800', 
                 borderRadius: 2, 
                 boxShadow: 3,
-                color: '#fff' // Aseguramos que el texto dentro del calendario sea blanco
+                color: '#fff' 
             }}>
                 
                 {logs.length === 0 ? (
@@ -326,10 +340,10 @@ const TrainingCalendar = ({ logs = [], loading }) => {
                         <DateCalendar
                             value={selectedDate}
                             onChange={handleDayClick}
-                            renderDay={renderDay}
+                            // 🔑 Uso correcto de slots en lugar de renderDay (como en MUI)
+                            slots={{ day: renderDay }} 
                             disableFuture
                             sx={{
-                                // Ajustes de estilo para encabezados y días de la semana
                                 '.MuiPickersCalendarHeader-label': { color: 'primary.light', fontWeight: 'bold' },
                                 '.MuiDayCalendar-weekDayLabel': { color: 'grey.400', fontWeight: '500' },
                                 '.MuiPickersCalendarHeader-root': { color: 'white' },
@@ -341,8 +355,6 @@ const TrainingCalendar = ({ logs = [], loading }) => {
             </Box>
 
             <SelectedDayPanel log={selectedLog} onClose={closeModal} />
-            
-          
         </Container>
     );
 };
