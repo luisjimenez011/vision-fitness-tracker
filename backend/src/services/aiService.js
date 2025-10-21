@@ -182,64 +182,92 @@ async function classifyExercisesByMuscle(uniqueExerciseNames) {
 }
 
 /**
- * Procesa el volumen agregado, clasifica los ejercicios usando IA, y genera un análisis.
- * @param {Array<Object>} aggregatedVolume - Datos de volumen por ejercicio (del repositorio)
- * @returns {Promise<{muscleVolume: Object, aiAnalysis: string}>}
- */
+ * Analiza el volumen agregado, clasifica los ejercicios usando IA, y genera un análisis.
+ *
+ * @param {Array<Object>} aggregatedVolume - Datos de volumen por ejercicio (del repositorio)
+ * @returns {Promise<{muscleVolume: Object, aiAnalysis: string}>}
+ */
 async function analyzeMuscleMap(aggregatedVolume) {
-    if (!aggregatedVolume || aggregatedVolume.length === 0) {
-        return { muscleVolume: {}, aiAnalysis: "No hay datos de volumen para analizar." };
-    }
+    // 🛑 CORRECCIÓN: Inicializar el cliente de la IA en el ámbito de la función
+    const genAI = getGeminiClient(); 
 
-    // 1. Obtener la lista única de ejercicios del log
-    const uniqueExerciseNames = [...new Set(aggregatedVolume.map(item => item.exerciseName))];
+    if (!aggregatedVolume || aggregatedVolume.length === 0) {
+        return { muscleVolume: {}, aiAnalysis: "No hay datos de volumen para analizar." };
+    }
 
-    // 2. Usar la IA para clasificar estos ejercicios dinámicamente
-    // Esto genera un mapeo { "Press Banca con Pausa": "Pecho", "Sentadilla Bulgara": "Piernas" }
-    let dynamicMuscleMap;
-    try {
-        dynamicMuscleMap = await classifyExercisesByMuscle(uniqueExerciseNames);
-    } catch (e) {
-        console.error("Fallo al clasificar ejercicios con IA:", e);
-        // Fallback: Si la IA falla, usamos un mapeo por defecto o marcamos todo como 'Otros'
-        dynamicMuscleMap = uniqueExerciseNames.reduce((map, name) => ({ ...map, [name]: 'Otros' }), {});
-    }
+    // 1. Obtener la lista única de ejercicios del log
+    const uniqueExerciseNames = [...new Set(aggregatedVolume.map(item => item.exerciseName))];
 
-    // 3. Mapeo de Volumen por Músculo usando el mapa dinámico
-    const muscleVolume = {};
-    let totalGlobalVolume = 0;
+    // 2. Usar la IA para clasificar estos ejercicios dinámicamente
+    let dynamicMuscleMap;
+    try {
+        dynamicMuscleMap = await classifyExercisesByMuscle(uniqueExerciseNames);
+    } catch (e) {
+        console.error("Fallo al clasificar ejercicios con IA:", e);
+        // Fallback: Si la IA falla, usamos un mapeo por defecto o marcamos todo como 'Otros'
+        dynamicMuscleMap = uniqueExerciseNames.reduce((map, name) => ({ ...map, [name]: 'Otros' }), {});
+    }
 
-    aggregatedVolume.forEach(item => {
-        const exerciseName = item.exerciseName;
-        // Usa el mapeo dinámico, o 'Otros' si la IA no lo clasificó
-        const muscleGroup = dynamicMuscleMap[exerciseName] || 'Otros'; 
-        const volume = item.totalVolume;
+    // 3. Mapeo de Volumen por Músculo usando el mapa dinámico
+    const muscleVolume = {};
+    let totalGlobalVolume = 0;
 
-        muscleVolume[muscleGroup] = (muscleVolume[muscleGroup] || 0) + volume;
-        totalGlobalVolume += volume;
-    });
+    aggregatedVolume.forEach(item => {
+        const exerciseName = item.exerciseName;
+        const muscleGroup = dynamicMuscleMap[exerciseName] || 'Otros'; 
+        const volume = item.totalVolume;
 
-    // 4. Análisis de IA (Simulado o mejorado con IA)
-    let analysisMessage = "Tu entrenamiento este mes ha sido **equilibrado** en los grupos musculares principales.";
+        muscleVolume[muscleGroup] = (muscleVolume[muscleGroup] || 0) + volume;
+        totalGlobalVolume += volume;
+    });
 
-    const pechoVolume = muscleVolume['Pecho'] || 0;
-    const piernasVolume = muscleVolume['Piernas'] || 0;
-    const espaldaVolume = muscleVolume['Espalda'] || 0;
+    // 4. ANÁLISIS DE IA DETALLADO
+    let analysisMessage;
 
-    if (totalGlobalVolume === 0) {
-        analysisMessage = "No hay datos de entrenamiento suficientes para analizar el mapa muscular.";
-    } else if (piernasVolume < pechoVolume * 0.7) {
-        analysisMessage = "Observamos un posible **desequilibrio**. El volumen de **Piernas** es bajo en comparación con el **Pecho**. Prioriza el tren inferior.";
-    } else if (pechoVolume > espaldaVolume * 1.5) {
-        analysisMessage = "Tienes una ligera tendencia a la **descompensación**. Tu volumen de **Pecho** es mayor que el de **Espalda**. Aumenta tu trabajo de tracción.";
-    }
+    if (totalGlobalVolume === 0) {
+        analysisMessage = "No hay datos de entrenamiento suficientes para analizar el mapa muscular.";
+    } else {
+        const muscleDataString = JSON.stringify(muscleVolume);
 
-    return {
-        muscleVolume: muscleVolume,
-        aiAnalysis: analysisMessage
-    };
+        const prompt = `
+            Analiza el siguiente balance de volumen de entrenamiento (en kg) por grupo muscular en el último mes.
+
+            Datos de Volumen Muscular: ${muscleDataString}
+
+            Instrucciones para la IA:
+            1. **Identifica el músculo más y menos entrenado** (en volumen).
+            2. **Evalúa el balance general** (perfecto, ligeramente desequilibrado, o muy desequilibrado). Compara grupos opuestos como Pecho vs. Espalda, Cuádriceps/Isquiotibiales (si están separados) o Brazos (Bíceps vs. Tríceps) para identificar descompensaciones.
+            3. **Proporciona una recomendación de entrenamiento específica** y procesable (actionable) basada en el desequilibrio encontrado, sugiriendo un enfoque para el próximo mes.
+
+            FORMATO DE RESPUESTA REQUERIDO:
+            Comienza con un resumen . Luego, usa párrafos separados o saltos de línea doble para los puntos 1, 2 y 3.
+            Asegúrate de que la salida sea legible directamente en una caja de texto con formato 'pre-wrap'.
+            Necesito que no sea muy extenso el análisis
+        `;
+
+        try {
+            // Utilizamos genAI (el cliente inicializado) para la llamada
+            const response = await genAI.models.generateContent({ 
+                model: "gemini-2.5-flash", 
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                config: {
+                    temperature: 0.5, 
+                },
+            });
+            analysisMessage = response.text.trim();
+
+        } catch (error) {
+            console.error("Error al obtener el análisis de IA:", error);
+            analysisMessage = "⚠️ Error del servidor de IA. No se pudo generar el análisis de balance muscular.";
+        }
+    }
+
+    // 5. Devolver los resultados
+    return {
+        muscleVolume: muscleVolume,
+        aiAnalysis: analysisMessage
+    };
 }
-
 
 module.exports = {
   generateRoutine,
