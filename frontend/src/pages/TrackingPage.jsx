@@ -2,511 +2,521 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
-// ----------------------------------------------------
-// ESTILOS
-// ----------------------------------------------------
-const style = {
-  card: {
-    border: '1px solid #e0e0e0',
-    borderRadius: '12px',
-    padding: '20px',
-    marginBottom: '20px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-    backgroundColor: '#ffffff',
-  },
-  input: {
-    padding: '8px',
-    borderRadius: '6px',
-    border: '1px solid #ccc',
-    width: '100px',
-    textAlign: 'center',
-  },
-  smallInput: { // Estilo para los inputs de edición dentro del log
-    padding: '4px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    width: '60px',
-    textAlign: 'center',
-    margin: '0 5px',
-  },
-  buttonPrimary: {
-    padding: '10px 15px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s',
-    fontWeight: 'bold',
-  },
-  buttonSecondary: {
-    padding: '10px 15px',
-    backgroundColor: '#6c757d',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s',
-    marginLeft: '10px',
-  },
-  buttonDanger: { // Estilo para el botón de eliminar set
-    padding: '4px 8px',
-    backgroundColor: '#dc3545',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    marginLeft: '10px',
-    fontSize: '0.8em'
-  },
-  timerDisplay: {
-    fontSize: '3em',
-    fontWeight: '900',
-    color: '#343a40',
-    fontFamily: 'monospace',
-  },
-};
+// ⬇️ IMPORTACIONES DE MUI
+import { 
+    Container, 
+    Box, 
+    Typography, 
+    Card, 
+    Button, 
+    CircularProgress, 
+    Alert,
+    TextField,
+    IconButton,
+    InputAdornment,
+    Switch,
+    FormControlLabel,
+    List,
+    ListItem,
+    Divider,
+} from '@mui/material';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+
 
 // ----------------------------------------------------
-// COMPONENTE MessageToast (sin cambios)
+// COMPONENTE MessageToast (Migrado a MUI Alert/Snackbar)
 // ----------------------------------------------------
-const MessageToast = ({ message, type, onClose }) => {
-  if (!message) return null;
+// En una aplicación MUI real, usarías el componente Snackbar y Alert. 
+// Aquí lo simplificamos a una Alert que desaparece, manteniendo la funcionalidad original.
+const MessageAlert = ({ message, type, onClose }) => {
+    if (!message) return null;
 
-  const bgColor = type === 'error' ? '#dc3545' : '#28a745';
-  const title = type === 'error' ? 'Error' : 'Éxito';
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: '20px',
-      right: '20px',
-      backgroundColor: bgColor,
-      color: 'white',
-      padding: '15px 25px',
-      borderRadius: '8px',
-      zIndex: 1000,
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      minWidth: '300px'
-    }}>
-      <div>
-        <strong>{title}:</strong> {message}
-      </div>
-      <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2em', cursor: 'pointer' }}>
-        &times;
-      </button>
-    </div>
-  );
+    return (
+        <Alert 
+            severity={type === 'error' ? 'error' : 'success'} 
+            onClose={onClose}
+            variant="filled"
+            sx={{ 
+                position: 'fixed', 
+                top: 20, 
+                right: 20, 
+                zIndex: 1000,
+                minWidth: '300px'
+            }}
+        >
+            {message}
+        </Alert>
+    );
 };
 
 // ----------------------------------------------------
 // COMPONENTE TrackingPage
 // ----------------------------------------------------
 const TrackingPage = () => {
-  const { routineId } = useParams();
-  const navigate = useNavigate();
+    const { routineId } = useParams();
+    const navigate = useNavigate();
 
-  const [routine, setRoutine] = useState(null);
-  const [currentDayWorkout, setCurrentDayWorkout] = useState(null);
-  const [timer, setTimer] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [trackedSets, setTrackedSets] = useState([]);
-  
-  // Estado para controlar los inputs de la nueva serie
-  const [inputs, setInputs] = useState({}); 
-  // Estado para controlar el modo 'Peso Corporal' por ejercicio
-  const [isBodyweightMode, setIsBodyweightMode] = useState({}); 
-  
-  const [message, setMessage] = useState({ text: null, type: null });
+    const [routine, setRoutine] = useState(null);
+    const [currentDayWorkout, setCurrentDayWorkout] = useState(null);
+    const [timer, setTimer] = useState(0);
+    const [isRunning, setIsRunning] = useState(false);
+    const [trackedSets, setTrackedSets] = useState([]);
+    
+    const [inputs, setInputs] = useState({}); 
+    const [isBodyweightMode, setIsBodyweightMode] = useState({}); 
+    
+    const [message, setMessage] = useState({ text: null, type: null });
+    const [loading, setLoading] = useState(true);
 
-  const showMessage = (text, type = 'success') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage({ text: null, type: null }), 4000);
-  };
+    const showMessage = (text, type = 'success') => {
+        setMessage({ text, type });
+        setTimeout(() => setMessage({ text: null, type: null }), 4000);
+    };
 
-  // Lógica para cargar la rutina
-  useEffect(() => {
-    const fetchRoutine = async () => {
-      try {
-        const response = await apiClient.get(`/routine/${routineId}`);
-        const fullRoutine = response.data;
-        setRoutine(fullRoutine);
+    // Lógica para cargar la rutina
+    useEffect(() => {
+        const fetchRoutine = async () => {
+            try {
+                const response = await apiClient.get(`/routine/${routineId}`);
+                const fullRoutine = response.data;
+                setRoutine(fullRoutine);
 
-        const workouts = fullRoutine.plan_json?.workouts;
-        
-        if (workouts && workouts.length > 0) {
-          setCurrentDayWorkout(workouts[0]);
-        } else {
-          showMessage('El plan cargado no contiene ejercicios válidos para el seguimiento.', 'error');
-        }
-      } catch (error) {
-        console.error('Error fetching routine:', error);
-        showMessage('No se pudo cargar la rutina. Verifica tu ID.', 'error');
-      }
-    };
+                const workouts = fullRoutine.plan_json?.workouts;
+                
+                if (workouts && workouts.length > 0) {
+                    setCurrentDayWorkout(workouts[0]);
+                } else {
+                    showMessage('El plan cargado no contiene ejercicios válidos para el seguimiento.', 'error');
+                }
+            } catch (error) {
+                console.error('Error fetching routine:', error);
+                showMessage('No se pudo cargar la rutina. Verifica tu ID.', 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    fetchRoutine();
-  }, [routineId]);
+        fetchRoutine();
+    }, [routineId]);
 
-  // Lógica del Cronómetro
-  useEffect(() => {
-    let interval = null;
-    if (isRunning) {
-      interval = setInterval(() => {
-        setTimer((prevTimer) => prevTimer + 1);
-      }, 1000);
-    } else if (!isRunning && timer !== 0) {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [isRunning, timer]);
+    // Lógica del Cronómetro (Sin cambios)
+    useEffect(() => {
+        let interval = null;
+        if (isRunning) {
+            interval = setInterval(() => {
+                setTimer((prevTimer) => prevTimer + 1);
+            }, 1000);
+        } else if (!isRunning && timer !== 0) {
+            clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+    }, [isRunning, timer]);
 
-  // Manejador genérico de inputs para la nueva serie
-  const handleInputChange = (exerciseName, field, value) => {
-    setInputs((prev) => ({
-      ...prev,
-      [exerciseName]: {
-        ...prev[exerciseName],
-        [field]: value,
-      },
-    }));
-  };
+    // Manejador genérico de inputs para la nueva serie (Sin cambios)
+    const handleInputChange = (exerciseName, field, value) => {
+        setInputs((prev) => ({
+            ...prev,
+            [exerciseName]: {
+                ...prev[exerciseName],
+                [field]: value,
+            },
+        }));
+    };
 
-  // Función auxiliar para re-numerar las series después de una eliminación o adición
-  const reindexSets = (sets) => {
-    const indexedSets = [];
-    const exerciseSetCounts = {};
+    // Función auxiliar para re-numerar las series (Sin cambios)
+    const reindexSets = (sets) => {
+        const indexedSets = [];
+        const exerciseSetCounts = {};
 
-    // Iteramos sobre el array de sets en el orden en que se registraron/modificaron
-    sets.forEach(set => {
-      const name = set.exerciseName;
-      exerciseSetCounts[name] = (exerciseSetCounts[name] || 0) + 1;
-      indexedSets.push({
-        ...set,
-        // Asignamos el nuevo número de set
-        set: exerciseSetCounts[name]
-      });
-    });
-    return indexedSets;
-  };
-  
-  // Función para obtener el índice real del set en el array global 'trackedSets'
-  // Esto es crucial para la edición/eliminación.
-  const getGlobalSetIndex = (exerciseName, setIndexInExercise) => {
-    let count = 0;
-    for (let i = 0; i < trackedSets.length; i++) {
-      if (trackedSets[i].exerciseName === exerciseName) {
-        count++;
-        if (count === setIndexInExercise) {
-          return i;
-        }
-      }
-    }
-    return -1;
-  };
+        sets.forEach(set => {
+            const name = set.exerciseName;
+            exerciseSetCounts[name] = (exerciseSetCounts[name] || 0) + 1;
+            indexedSets.push({
+                ...set,
+                set: exerciseSetCounts[name]
+            });
+        });
+        return indexedSets;
+    };
+    
+    // Función para obtener el índice real del set (Sin cambios)
+    const getGlobalSetIndex = (exerciseName, setIndexInExercise) => {
+        let count = 0;
+        for (let i = 0; i < trackedSets.length; i++) {
+            if (trackedSets[i].exerciseName === exerciseName) {
+                count++;
+                if (count === setIndexInExercise) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    };
 
-  // Lógica para añadir una nueva serie
-  const handleAddSet = (exerciseName) => {
-    if (!isRunning) {
-      showMessage('Debes iniciar el cronómetro para registrar sets.', 'error');
-      return;
-    }
-    
-    const isBodyweight = isBodyweightMode[exerciseName] || false; // ¿Está marcado el modo BW?
+    // Lógica para añadir una nueva serie (Sin cambios en la lógica central, solo validación adaptada)
+    const handleAddSet = (exerciseName) => {
+        if (!isRunning) {
+            showMessage('Debes iniciar el cronómetro para registrar sets.', 'error');
+            return;
+        }
+        
+        const isBodyweight = isBodyweightMode[exerciseName] || false;
 
-    let { weight, reps } = inputs[exerciseName] || { weight: '', reps: '' };
-    
-    // Validación de Reps (siempre requerida)
-    if (!/^\d+$/.test(reps) || parseInt(reps, 10) <= 0) {
-      showMessage('Introduce solo un valor numérico válido (> 0) para Repeticiones.', 'error');
-      return;
-    }
-    
-    // Validación de Peso (solo si NO es Bodyweight)
-    if (!isBodyweight) {
-      if (!/^\d+(\.\d+)?$/.test(weight) || parseFloat(weight) < 0) {
-        showMessage('Introduce un valor numérico válido (>= 0) para Peso.', 'error');
-        return;
-      }
-    } else {
-      weight = 0; // Si es BW, el peso registrado es 0
-    }
+        let { weight, reps } = inputs[exerciseName] || { weight: '', reps: '' };
+        
+        // Validación de Reps
+        if (!/^\d+$/.test(reps) || parseInt(reps, 10) <= 0) {
+            showMessage('Introduce solo un valor numérico válido (> 0) para Repeticiones.', 'error');
+            return;
+        }
+        
+        // Validación de Peso
+        if (!isBodyweight) {
+            if (!/^\d+(\.\d+)?$/.test(weight) || parseFloat(weight) < 0) {
+                showMessage('Introduce un valor numérico válido (>= 0) para Peso.', 'error');
+                return;
+            }
+        } else {
+            weight = 0;
+        }
 
+        const newSet = {
+            exerciseName,
+            set: 0, 
+            weight: parseFloat(weight), 
+            reps: parseInt(reps, 10),
+            isBodyweight: isBodyweight,
+            timestamp: new Date().toISOString() 
+        };
 
-    const newSet = {
-      exerciseName,
-      // El número de set se recalculará en reindexSets
-      set: 0, 
-      weight: parseFloat(weight), 
-      reps: parseInt(reps, 10),
-      isBodyweight: isBodyweight, // Guardamos la bandera en el log
-      timestamp: new Date().toISOString() 
-    };
+        setTrackedSets((prev) => {
+            const newSets = [...prev, newSet];
+            return reindexSets(newSets);
+        });
+        
+        showMessage(`Set registrado.`, 'success');
+        
+        // Limpiamos los inputs
+        setInputs((prev) => ({
+            ...prev,
+            [exerciseName]: { weight: isBodyweight ? '' : '', reps: '' },
+        }));
+    };
+    
+    // Actualiza el peso o las reps de un set (Sin cambios)
+    const handleUpdateSet = (index, field, value) => {
+        
+        if (field === 'reps' && !/^\d*$/.test(value)) return;
+        if (field === 'weight' && !/^\d*(\.\d*)?$/.test(value)) return;
+        
+        const numericValue = value === '' ? 0 : parseFloat(value);
+        
+        setTrackedSets(prevSets => {
+            const newSets = [...prevSets];
+            newSets[index] = {
+                ...newSets[index],
+                [field]: numericValue
+            };
+            return newSets;
+        });
+    };
 
-    setTrackedSets((prev) => {
-      const newSets = [...prev, newSet];
-      // Re-indexar los sets para tener el orden correcto
-      return reindexSets(newSets);
-    });
-    
-    showMessage(`Set registrado.`, 'success');
-    
-    // Limpiamos los inputs
-    setInputs((prev) => ({
-      ...prev,
-      [exerciseName]: { weight: isBodyweight ? '' : '', reps: '' },
-    }));
-  };
-  
-  /**
-   * Actualiza el peso o las reps de un set en el array.
-   * @param {number} index - Índice del set en el array trackedSets.
-   * @param {string} field - 'weight' o 'reps'.
-   * @param {string} value - Nuevo valor del input (string).
-   */
-  const handleUpdateSet = (index, field, value) => {
-    
-    // Pre-validación simple para evitar valores no numéricos mientras se teclea
-    if (field === 'reps' && !/^\d*$/.test(value)) return;
-    if (field === 'weight' && !/^\d*(\.\d*)?$/.test(value)) return;
-    
-    // Si el campo está vacío, lo tratamos como 0 para permitir al usuario borrar el input
-    const numericValue = value === '' ? 0 : parseFloat(value);
-    
-    setTrackedSets(prevSets => {
-      const newSets = [...prevSets];
-      newSets[index] = {
-        ...newSets[index],
-        [field]: numericValue
-      };
-      return newSets;
-    });
-  };
+    // Elimina un set (Sin cambios)
+    const handleRemoveSet = (index, setNumber, exerciseName) => {
+        if (!window.confirm(`¿Estás seguro de que quieres eliminar el Set ${setNumber} de ${exerciseName}?`)) {
+            return;
+        }
 
-  /**
-   * Elimina un set por su índice y re-indexa los sets.
-   * @param {number} index - Índice del set a eliminar en el array trackedSets.
-   */
-  const handleRemoveSet = (index, setNumber, exerciseName) => {
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar el Set ${setNumber} de ${exerciseName}?`)) {
-      return;
-    }
-
-    setTrackedSets(prevSets => {
-      const newSets = prevSets.filter((_, i) => i !== index);
-      showMessage('Set eliminado.', 'success');
-      // Re-indexar para que los números de set sean secuenciales
-      return reindexSets(newSets); 
-    });
-  };
+        setTrackedSets(prevSets => {
+            const newSets = prevSets.filter((_, i) => i !== index);
+            showMessage('Set eliminado.', 'success');
+            return reindexSets(newSets); 
+        });
+    };
 
 
-  // Lógica para finalizar el entrenamiento
-  const handleFinishWorkout = async () => {
-    if (timer === 0) {
-        showMessage('El entrenamiento no ha comenzado.', 'error');
-        return;
-    }
+    // Lógica para finalizar el entrenamiento (Sin cambios)
+    const handleFinishWorkout = async () => {
+        if (timer === 0) {
+            showMessage('El entrenamiento no ha comenzado.', 'error');
+            return;
+        }
 
-    if (trackedSets.length === 0 && !window.confirm('No has registrado sets. ¿Seguro que quieres finalizar el entrenamiento sin guardar progreso?')) {
-      return;
-    }
-    
-    setIsRunning(false); // Detener cronómetro
-    
-    try {
-      await apiClient.post('/workout/finish-session', {
-        routineId: parseInt(routineId, 10),
-        dayName: currentDayWorkout?.day || 'Día Desconocido',
-        durationSeconds: timer,
-        logData: trackedSets,
-      });
+        if (trackedSets.length === 0 && !window.confirm('No has registrado sets. ¿Seguro que quieres finalizar el entrenamiento sin guardar progreso?')) {
+            return;
+        }
+        
+        setIsRunning(false);
+        
+        try {
+            await apiClient.post('/workout/finish-session', {
+                routineId: parseInt(routineId, 10),
+                dayName: currentDayWorkout?.day || 'Día Desconocido',
+                durationSeconds: timer,
+                logData: trackedSets,
+            });
 
-      showMessage('¡Entrenamiento guardado con éxito!', 'success');
-      
-      setTimeout(() => navigate('/dashboard'), 1500); 
+            showMessage('¡Entrenamiento guardado con éxito!', 'success');
+            
+            setTimeout(() => navigate('/dashboard'), 1500); 
 
-    } catch (error) {
-      console.error('Error saving workout session:', error);
-      showMessage('Hubo un error al guardar la sesión. Inténtalo de nuevo.', 'error');
-    }
-  };
+        } catch (error) {
+            console.error('Error saving workout session:', error);
+            showMessage('Hubo un error al guardar la sesión. Inténtalo de nuevo.', 'error');
+        }
+    };
 
-  const formatTime = (totalSeconds) => {
-    const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-    const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${hours}:${minutes}:${seconds}`;
-  };
+    // Función para formatear el tiempo (Sin cambios)
+    const formatTime = (totalSeconds) => {
+        const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+        const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+        const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
+    };
 
-  if (!routine) {
-    return <div style={{ textAlign: 'center', padding: '50px' }}>Cargando rutina...</div>;
-  }
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+                <CircularProgress color="primary" />
+                <Typography variant="h6" sx={{ ml: 2, color: 'text.secondary' }}>Cargando rutina...</Typography>
+            </Box>
+        );
+    }
+    
+    if (!routine) {
+        return (
+            <Container maxWidth="sm" sx={{ mt: 5 }}>
+                <Alert severity="error">Error al cargar la rutina.</Alert>
+            </Container>
+        );
+    }
 
-  return (
-    <div style={{ padding: '20px', maxWidth: '800px', margin: 'auto', background: '#f8f9fa', minHeight: '100vh' }}>
-      <MessageToast 
-        message={message.text} 
-        type={message.type} 
-        onClose={() => setMessage({ text: null, type: null })}
-      />
 
-      <h1 style={{ textAlign: 'center', color: '#343a40' }}>{routine.name}</h1>
-      <h2 style={{ textAlign: 'center', color: '#6c757d', marginBottom: '30px', fontSize: '1.5em' }}>
-        {currentDayWorkout?.day || 'Día Desconocido'}: {currentDayWorkout?.focus || 'Entrenamiento del día'}
-      </h2>
+    return (
+        <Container component="main" maxWidth="md" sx={{ py: 4, minHeight: '100vh' }}>
+            <MessageAlert 
+                message={message.text} 
+                type={message.type} 
+                onClose={() => setMessage({ text: null, type: null })}
+            />
 
-      {/* Sección del Cronómetro y Controles */}
-      <div style={{ textAlign: 'center', margin: '30px 0', padding: '20px', backgroundColor: '#e9ecef', borderRadius: '12px' }}>
-        <div style={style.timerDisplay}>{formatTime(timer)}</div>
-        <div style={{ marginTop: '15px' }}>
-          <button 
-            onClick={() => setIsRunning(!isRunning)} 
-            style={{ ...style.buttonPrimary, backgroundColor: isRunning ? '#ffc107' : '#28a745' }}
-          >
-            {isRunning ? 'Pausar' : (timer === 0 ? 'Empezar Entrenamiento' : 'Continuar')}
-          </button>
-          <button 
-            onClick={handleFinishWorkout} 
-            style={style.buttonSecondary}
-            disabled={timer === 0}
-          >
-            Finalizar Entrenamiento
-          </button>
-        </div>
-      </div>
+            <Typography variant="h4" component="h1" color="primary" align="center" sx={{ mb: 1, fontWeight: 700 }}>
+                {routine.name}
+            </Typography>
+            <Typography variant="h6" color="text.secondary" align="center" sx={{ mb: 4 }}>
+                {currentDayWorkout?.day || 'Día Desconocido'}: {currentDayWorkout?.focus || 'Entrenamiento del día'}
+            </Typography>
 
-      {/* Lista de Ejercicios */}
-      {currentDayWorkout?.exercises?.map((exercise, index) => (
-        <div key={index} style={style.card}>
-          <h3 style={{ borderBottom: '2px solid #007bff', paddingBottom: '5px', color: '#343a40' }}>{exercise.name}</h3>
-          <p style={{ color: '#007bff', fontWeight: 'bold' }}>Plan: {exercise.sets} sets x {exercise.reps} reps</p>
-          <p style={{ color: '#6c757d', fontSize: '0.9em' }}>Notas: {exercise.notes || 'N/A'}</p>
+            {/* Sección del Cronómetro y Controles */}
+            <Box sx={{ 
+                textAlign: 'center', 
+                margin: '30px 0', 
+                p: 3, 
+                bgcolor: 'primary.light', // Color de fondo suave
+                borderRadius: 2,
+                boxShadow: 3
+            }}>
+                <Typography 
+                    variant="h2" 
+                    component="div"
+                    sx={{ 
+                        fontWeight: '900', 
+                        color: 'primary.dark', 
+                        fontFamily: 'monospace',
+                        mb: 2
+                    }}
+                >
+                    {formatTime(timer)}
+                </Typography>
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 2 }}>
+                    <Button 
+                        variant="contained" 
+                        color={isRunning ? 'warning' : 'success'}
+                        startIcon={isRunning ? <PauseIcon /> : <PlayArrowIcon />}
+                        onClick={() => setIsRunning(!isRunning)} 
+                        size="large"
+                    >
+                        {isRunning ? 'Pausar' : (timer === 0 ? 'Empezar' : 'Continuar')}
+                    </Button>
+                    <Button 
+                        variant="outlined" 
+                        color="error"
+                        startIcon={<CheckCircleOutlineIcon />}
+                        onClick={handleFinishWorkout} 
+                        disabled={timer === 0}
+                        size="large"
+                    >
+                        Finalizar
+                    </Button>
+                </Box>
+            </Box>
 
-          {/* Sets registrados */}
-          <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f2f2f2', borderRadius: '8px' }}>
-            <h4>Progreso ({trackedSets.filter((s) => s.exerciseName === exercise.name).length} / {exercise.sets}):</h4>
-            <ul style={{ listStyleType: 'none', padding: 0 }}>
-              {trackedSets
-                .filter((s) => s.exerciseName === exercise.name)
-                .map((s) => {
-                    // Obtenemos el índice real del set en el array global trackedSets
-                    const globalIndex = getGlobalSetIndex(s.exerciseName, s.set); 
-                    
-                    // Manejamos la visualización de "BW"
-                    const isSetBodyweight = s.isBodyweight || false;
+            {/* Lista de Ejercicios */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {currentDayWorkout?.exercises?.map((exercise, index) => (
+                    <Card key={index} sx={{ p: 3, boxShadow: 3 }}>
+                        
+                        <Typography variant="h5" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 1, color: 'text.primary' }}>
+                            <FitnessCenterIcon sx={{ mr: 1, verticalAlign: 'middle' }} color="primary" />
+                            {exercise.name}
+                        </Typography>
+                        
+                        <Typography variant="body1" color="primary.main" sx={{ fontWeight: 'bold', mb: 1 }}>
+                            Plan: {exercise.sets} sets x {exercise.reps} reps
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Notas: {exercise.notes || 'N/A'}
+                        </Typography>
 
-                    return (
-                      <li 
-                        key={s.timestamp + s.set}
-                        style={{ 
-                          padding: '5px 0', 
-                          borderBottom: '1px dotted #ccc',
-                          display: 'flex', 
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}
-                      >
-                        <div>
-                          Set {s.set}:
-                          
-                          {/* Etiqueta BW si aplica */}
-                          <span style={{ marginRight: '5px', fontWeight: 'bold', color: isSetBodyweight ? '#28a745' : 'inherit' }}>
-                            {isSetBodyweight ? 'BW' : ''}
-                          </span>
+                        {/* Sets registrados */}
+                        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                                Progreso ({trackedSets.filter((s) => s.exerciseName === exercise.name).length} / {exercise.sets}):
+                            </Typography>
+                            <List disablePadding>
+                                {trackedSets
+                                    .filter((s) => s.exerciseName === exercise.name)
+                                    .map((s, idx) => {
+                                        const globalIndex = getGlobalSetIndex(s.exerciseName, s.set); 
+                                        const isSetBodyweight = s.isBodyweight || false;
 
-                          {/* Input editable para Peso */}
-                          <input
-                            type="number"
-                            value={s.weight || ''} // Usamos '' para que el 0 no aparezca en el input
-                            onChange={(e) => handleUpdateSet(globalIndex, 'weight', e.target.value)}
-                            style={style.smallInput}
-                            disabled={isSetBodyweight} // Deshabilitar si se registró como BW
-                          /> 
-                          {!isSetBodyweight && 'kg'} x
-                          
-                          {/* Input editable para Reps */}
-                          <input
-                            type="number"
-                            value={s.reps}
-                            onChange={(e) => handleUpdateSet(globalIndex, 'reps', e.target.value)}
-                            style={style.smallInput}
-                          /> reps
-                        </div>
-                        
-                        {/* Botón de Eliminar */}
-                        <button 
-                          onClick={() => handleRemoveSet(globalIndex, s.set, s.exerciseName)} 
-                          style={style.buttonDanger}
-                        >
-                          Eliminar
-                        </button>
-                      </li>
-                    );
-                })}
-            </ul>
-          </div>
+                                        return (
+                                            <React.Fragment key={s.timestamp + s.set}>
+                                                <ListItem 
+                                                    sx={{ 
+                                                        py: 1, 
+                                                        display: 'flex', 
+                                                        justifyContent: 'space-between', 
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+                                                        <Typography sx={{ fontWeight: 'medium', mr: 2 }}>
+                                                            Set {s.set}:
+                                                        </Typography>
+                                                        
+                                                        <Typography 
+                                                            variant="caption"
+                                                            sx={{ 
+                                                                mr: 1, 
+                                                                color: isSetBodyweight ? 'success.main' : 'inherit', 
+                                                                fontWeight: 'bold' 
+                                                            }}
+                                                        >
+                                                            {isSetBodyweight ? 'BW' : ''}
+                                                        </Typography>
 
-          {/* Formulario para nuevo set */}
-          <div style={{ marginTop: '15px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Checkbox de Peso Corporal (BW) */}
-            <div style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: '5px' }}>
-                <input 
-                    type="checkbox" 
-                    id={`bw-${exercise.name}`}
-                    checked={isBodyweightMode[exercise.name] || false}
-                    onChange={(e) => {
-                        setIsBodyweightMode(prev => ({ 
-                            ...prev, 
-                            [exercise.name]: e.target.checked 
-                        }));
-                        // Limpiar el input de peso si se activa
-                        if(e.target.checked) {
-                            setInputs(prev => ({
-                                ...prev,
-                                [exercise.name]: { ...prev[exercise.name], weight: '' }
-                            }));
-                        }
-                    }}
-                    style={{ marginRight: '5px' }}
-                />
-                <label htmlFor={`bw-${exercise.name}`} style={{ fontSize: '0.9em', color: '#6c757d' }}>
-                    Sin peso adicional (Calistenia)
-                </label>
-            </div>
+                                                        {/* Input editable para Peso */}
+                                                        <TextField
+                                                            type="number"
+                                                            size="small"
+                                                            label={isSetBodyweight ? '' : 'Peso'}
+                                                            variant="outlined"
+                                                            value={s.weight || ''}
+                                                            onChange={(e) => handleUpdateSet(globalIndex, 'weight', e.target.value)}
+                                                            sx={{ width: 80, mr: 1 }}
+                                                            disabled={isSetBodyweight}
+                                                        /> 
+                                                        {!isSetBodyweight && <Typography sx={{ mr: 1 }}>kg x</Typography>}
+                                                        
+                                                        {/* Input editable para Reps */}
+                                                        <TextField
+                                                            type="number"
+                                                            size="small"
+                                                            label="Reps"
+                                                            variant="outlined"
+                                                            value={s.reps}
+                                                            onChange={(e) => handleUpdateSet(globalIndex, 'reps', e.target.value)}
+                                                            sx={{ width: 80 }}
+                                                        /> 
+                                                    </Box>
+                                                    
+                                                    {/* Botón de Eliminar */}
+                                                    <IconButton 
+                                                        color="error"
+                                                        onClick={() => handleRemoveSet(globalIndex, s.set, s.exerciseName)} 
+                                                        aria-label="eliminar set"
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </ListItem>
+                                                {idx < trackedSets.filter((s) => s.exerciseName === exercise.name).length - 1 && <Divider component="li" />}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                            </List>
+                        </Box>
 
-            {/* Input de Peso */}
-            <input
-              type="number"
-              placeholder="Peso (kg)"
-              value={inputs[exercise.name]?.weight || ''}
-              onChange={(e) => handleInputChange(exercise.name, 'weight', e.target.value)}
-              style={style.input}
-              disabled={isBodyweightMode[exercise.name]}
-            />
-            {/* Input de Reps */}
-            <input
-              type="number"
-              placeholder="Reps"
-              value={inputs[exercise.name]?.reps || ''}
-              onChange={(e) => handleInputChange(exercise.name, 'reps', e.target.value)}
-              style={style.input}
-            />
-            {/* Botón Añadir Set */}
-            <button 
-              onClick={() => handleAddSet(exercise.name)}
-              style={{ ...style.buttonPrimary, flexGrow: 1 }}
-            >
-              Añadir Set
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+                        {/* Formulario para nuevo set */}
+                        <Box sx={{ mt: 3, p: 2, border: '1px dashed', borderColor: 'grey.300', borderRadius: 1 }}>
+                            
+                            {/* Switch de Peso Corporal (BW) */}
+                            <FormControlLabel
+                                control={
+                                    <Switch 
+                                        checked={isBodyweightMode[exercise.name] || false}
+                                        onChange={(e) => {
+                                            setIsBodyweightMode(prev => ({ 
+                                                ...prev, 
+                                                [exercise.name]: e.target.checked 
+                                            }));
+                                            if(e.target.checked) {
+                                                setInputs(prev => ({
+                                                    ...prev,
+                                                    [exercise.name]: { ...prev[exercise.name], weight: '' }
+                                                }));
+                                            }
+                                        }}
+                                        color="secondary"
+                                    />
+                                }
+                                label="Sin peso adicional (Calistenia)"
+                                sx={{ mb: 2 }}
+                            />
+
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                {/* Input de Peso */}
+                                <TextField
+                                    type="number"
+                                    label="Peso (kg)"
+                                    size="small"
+                                    fullWidth
+                                    value={inputs[exercise.name]?.weight || ''}
+                                    onChange={(e) => handleInputChange(exercise.name, 'weight', e.target.value)}
+                                    disabled={isBodyweightMode[exercise.name]}
+                                />
+                                {/* Input de Reps */}
+                                <TextField
+                                    type="number"
+                                    label="Reps"
+                                    size="small"
+                                    fullWidth
+                                    value={inputs[exercise.name]?.reps || ''}
+                                    onChange={(e) => handleInputChange(exercise.name, 'reps', e.target.value)}
+                                />
+                                {/* Botón Añadir Set */}
+                                <Button 
+                                    variant="contained" 
+                                    color="primary"
+                                    onClick={() => handleAddSet(exercise.name)}
+                                    startIcon={<AddIcon />}
+                                    sx={{ minWidth: 120 }}
+                                    disabled={!isRunning}
+                                >
+                                    Añadir
+                                </Button>
+                            </Box>
+                        </Box>
+                    </Card>
+                ))}
+            </Box>
+        </Container>
+    );
 };
 
 export default TrackingPage;

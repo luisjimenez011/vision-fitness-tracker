@@ -2,35 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
-const style = {
-    container: { padding: '20px', maxWidth: '800px', margin: 'auto', background: '#f8f9fa', minHeight: '100vh' },
-    card: { border: '1px solid #e0e0e0', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)', backgroundColor: '#ffffff' },
-    input: { padding: '8px', borderRadius: '6px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', marginBottom: '10px' },
-    smallInput: { padding: '8px', borderRadius: '6px', border: '1px solid #ccc', width: '80px', textAlign: 'center' },
-    buttonPrimary: { padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: 'background-color 0.3s', fontWeight: 'bold' },
-    buttonDanger: { padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', transition: 'background-color 0.3s' },
-    buttonSecondary: { padding: '10px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: 'background-color 0.3s', marginLeft: '10px' },
-};
+// ⬇️ IMPORTACIONES DE MUI
+import {
+    Container,
+    Box,
+    Typography,
+    Card,
+    TextField,
+    Button,
+    IconButton,
+    CircularProgress,
+    Alert,
+    InputAdornment, // Para iconos en TextFields
+} from '@mui/material';
+import SaveIcon from '@mui/icons-material/Save';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 
 const RoutineEditPage = () => {
     const { routineId } = useParams();
     const navigate = useNavigate();
 
-    // El estado almacena la estructura de la rutina que vamos a modificar
     const [editableRoutine, setEditableRoutine] = useState(null);
     const [originalRoutineName, setOriginalRoutineName] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // --- LÓGICA DE CARGA DE DATOS ---
+    // --- LÓGICA DE CARGA DE DATOS (Sin cambios) ---
     useEffect(() => {
         const fetchRoutine = async () => {
             try {
                 const response = await apiClient.get(`/routine/${routineId}`);
                 const routineData = response.data;
                 
-                // 🛑 Asumimos que el backend ya reformateó la rutina (getOne)
-                // Usaremos SOLO el primer 'workout' ya que las rutinas de IA son sesiones diarias.
+                // Usamos SOLO el primer 'workout'
                 const workout = routineData.plan_json?.workouts?.[0];
 
                 if (!workout) {
@@ -39,7 +46,6 @@ const RoutineEditPage = () => {
                     return;
                 }
 
-                // Clonar la rutina y el workout para hacerlos editables
                 setEditableRoutine({
                     name: routineData.name,
                     workout: { ...workout }
@@ -58,7 +64,7 @@ const RoutineEditPage = () => {
         fetchRoutine();
     }, [routineId]);
 
-    // --- LÓGICA DE MANEJO DE CAMBIOS ---
+    // --- LÓGICA DE MANEJO DE CAMBIOS (Mantenida, adaptada a MUI) ---
 
     const handleNameChange = (e) => {
         setEditableRoutine(prev => ({ ...prev, name: e.target.value }));
@@ -67,9 +73,12 @@ const RoutineEditPage = () => {
     const handleExerciseChange = (index, field, value) => {
         setEditableRoutine(prev => {
             const newExercises = [...prev.workout.exercises];
+            // Aseguramos que 'sets' y 'reps' sean números (o cadena vacía)
+            const parsedValue = field === 'sets' || field === 'reps' ? parseInt(value, 10) || '' : value;
+
             newExercises[index] = {
                 ...newExercises[index],
-                [field]: field === 'sets' || field === 'reps' ? parseInt(value, 10) || '' : value
+                [field]: parsedValue
             };
             return { ...prev, workout: { ...prev.workout, exercises: newExercises } };
         });
@@ -88,13 +97,13 @@ const RoutineEditPage = () => {
         setEditableRoutine(prev => {
             const newExercises = [
                 ...prev.workout.exercises,
-                { name: 'Nuevo Ejercicio', sets: 3, reps: 10, notes: '' } // Estructura básica
+                { name: 'Nuevo Ejercicio', sets: 3, reps: 10, notes: '' }
             ];
             return { ...prev, workout: { ...prev.workout, exercises: newExercises } };
         });
     };
     
-    // --- LÓGICA DE GUARDADO ---
+    // --- LÓGICA DE GUARDADO (Sin cambios) ---
 
     const handleSaveChanges = async () => {
         if (!editableRoutine || !editableRoutine.name || editableRoutine.workout.exercises.length === 0) {
@@ -103,128 +112,193 @@ const RoutineEditPage = () => {
         }
 
         try {
-            // Reconstruimos el plan_json con la nueva estructura de una sesión individual
+            // Reconstruimos la estructura para el backend
             const updatedPlanJson = {
-                day: editableRoutine.workout.day,
-                focus: editableRoutine.workout.focus,
-                description: editableRoutine.workout.description || 'Sesión de entrenamiento individual modificada.',
-                exercises: editableRoutine.workout.exercises,
+                workouts: [{ // Empaquetamos en el array 'workouts' de nuevo
+                    day: editableRoutine.workout.day,
+                    focus: editableRoutine.workout.focus,
+                    description: editableRoutine.workout.description || 'Sesión de entrenamiento individual modificada.',
+                    exercises: editableRoutine.workout.exercises,
+                }]
             };
             
-            // 🛑 El backend espera { name, plan_json }
             const payload = {
                 name: editableRoutine.name,
-                plan_json: updatedPlanJson,
+                // El backend espera plan_json como JSON serializado si no es un campo JSON nativo
+                plan_json: updatedPlanJson, 
             };
+            
+            // Si tu API necesita la cadena JSON, usa: JSON.stringify(updatedPlanJson)
+            // Aquí asumimos que apiClient maneja la serialización, enviando el objeto.
 
             await apiClient.put(`/routine/${routineId}`, payload);
 
             alert('Rutina actualizada con éxito!');
-            navigate('/routines'); // Vuelve a la lista de rutinas
+            navigate('/routines');
 
         } catch (err) {
-            console.error('Error saving routine:', err);
-            alert('Error al guardar la rutina. Revisa la consola para más detalles.');
+            console.error('Error saving routine:', err.response?.data || err.message);
+            alert(`Error al guardar la rutina: ${err.response?.data?.error || 'Error de servidor'}`);
         }
     };
 
 
-    if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Cargando datos de edición...</div>;
-    if (error) return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>{error}</div>;
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+                <CircularProgress color="primary" />
+                <Typography variant="h6" sx={{ ml: 2, color: 'text.secondary' }}>Cargando datos de edición...</Typography>
+            </Box>
+        );
+    }
+    if (error) {
+        return (
+            <Container maxWidth="sm" sx={{ mt: 5 }}>
+                <Alert severity="error">{error}</Alert>
+            </Container>
+        );
+    }
 
-    if (!editableRoutine) return null; // Fallback
+    if (!editableRoutine) return null;
 
     return (
-        <div style={style.container}>
-            <h1 style={{ textAlign: 'center', color: '#343a40' }}>Editar Rutina</h1>
-            <h2 style={{ textAlign: 'center', color: '#6c757d', marginBottom: '30px', fontSize: '1.2em' }}>{originalRoutineName}</h2>
+        <Container component="main" maxWidth="md" sx={{ py: 4, minHeight: '100vh' }}>
+            
+            <Typography variant="h4" component="h1" color="primary" align="center" sx={{ mb: 1, fontWeight: 700 }}>
+                Editar Rutina
+            </Typography>
+            <Typography variant="h6" color="text.secondary" align="center" sx={{ mb: 4 }}>
+                {originalRoutineName}
+            </Typography>
 
             {/* Edición del Nombre de la Rutina */}
-            <div style={style.card}>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Nombre de la Rutina:</label>
-                <input
-                    type="text"
+            <Card sx={{ p: 3, mb: 4, boxShadow: 3 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Nombre de la Rutina:</Typography>
+                <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
                     value={editableRoutine.name}
                     onChange={handleNameChange}
-                    style={style.input}
                 />
-            </div>
+            </Card>
 
             {/* Lista de Ejercicios Editables */}
-            <h3 style={{ borderBottom: '2px solid #007bff', paddingBottom: '5px', marginTop: '30px' }}>Ejercicios:</h3>
+            <Typography variant="h5" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 3, color: 'text.primary' }}>
+                Ejercicios
+            </Typography>
 
-            {editableRoutine.workout.exercises.map((exercise, index) => (
-                <div key={index} style={{ ...style.card, display: 'flex', flexDirection: 'column' }}>
-                    
-                    {/* Nombre del Ejercicio */}
-                    <input
-                        type="text"
-                        value={exercise.name}
-                        onChange={(e) => handleExerciseChange(index, 'name', e.target.value)}
-                        style={{ ...style.input, fontSize: '1.2em', fontWeight: 'bold' }}
-                    />
-                    
-                    {/* Sets y Reps */}
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '10px' }}>
-                        <label>Sets:</label>
-                        <input
-                            type="number"
-                            value={exercise.sets}
-                            onChange={(e) => handleExerciseChange(index, 'sets', e.target.value)}
-                            style={style.smallInput}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {editableRoutine.workout.exercises.map((exercise, index) => (
+                    <Card 
+                        key={index} 
+                        sx={{ 
+                            p: 3, 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            boxShadow: 2, 
+                            borderLeft: '4px solid', 
+                            borderColor: 'secondary.main' 
+                        }}
+                    >
+                        
+                        {/* Nombre del Ejercicio */}
+                        <TextField
+                            fullWidth
+                            label="Nombre del Ejercicio"
+                            variant="outlined"
+                            size="small"
+                            sx={{ mb: 2 }}
+                            value={exercise.name}
+                            onChange={(e) => handleExerciseChange(index, 'name', e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <FitnessCenterIcon color="primary" />
+                                    </InputAdornment>
+                                ),
+                                style: { fontWeight: 'bold' }
+                            }}
                         />
-                        <label>Reps:</label>
-                        <input
-                            type="number"
-                            value={exercise.reps}
-                            onChange={(e) => handleExerciseChange(index, 'reps', e.target.value)}
-                            style={style.smallInput}
-                        />
-                        <button 
-                            onClick={() => handleRemoveExercise(index)} 
-                            style={{ ...style.buttonDanger, marginLeft: 'auto' }}
-                        >
-                            Quitar
-                        </button>
-                    </div>
+                        
+                        {/* Sets, Reps y Botón de Eliminar */}
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+                            
+                            {/* Sets */}
+                            <TextField
+                                label="Sets"
+                                type="number"
+                                size="small"
+                                sx={{ width: 100 }}
+                                value={exercise.sets}
+                                onChange={(e) => handleExerciseChange(index, 'sets', e.target.value)}
+                            />
+                            
+                            {/* Reps */}
+                            <TextField
+                                label="Reps"
+                                type="number"
+                                size="small"
+                                sx={{ width: 100 }}
+                                value={exercise.reps}
+                                onChange={(e) => handleExerciseChange(index, 'reps', e.target.value)}
+                            />
 
-                    {/* Notas (Opcional) */}
-                    <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px', marginTop: '10px' }}>Notas:</label>
-                    <input
-                        type="text"
-                        placeholder="Notas adicionales (opcional)"
-                        value={exercise.notes || ''}
-                        onChange={(e) => handleExerciseChange(index, 'notes', e.target.value)}
-                        style={style.input}
-                    />
-                </div>
-            ))}
+                            {/* Botón de Eliminar */}
+                            <IconButton 
+                                color="error"
+                                onClick={() => handleRemoveExercise(index)} 
+                                aria-label="quitar ejercicio"
+                                sx={{ ml: 'auto' }}
+                            >
+                                <DeleteIcon />
+                            </IconButton>
+                        </Box>
+
+                        {/* Notas */}
+                        <TextField
+                            fullWidth
+                            label="Notas (Opcional)"
+                            variant="outlined"
+                            size="small"
+                            placeholder="Ej: Descanso 90s, superserie con..."
+                            value={exercise.notes || ''}
+                            onChange={(e) => handleExerciseChange(index, 'notes', e.target.value)}
+                        />
+                    </Card>
+                ))}
+            </Box>
 
             {/* Controles para Añadir y Guardar */}
-            <div style={{ marginTop: '30px', textAlign: 'center' }}>
-                <button 
+            <Box sx={{ mt: 5, textAlign: 'center', display: 'flex', justifyContent: 'center', gap: 2 }}>
+                <Button 
+                    variant="contained" 
+                    color="primary"
+                    startIcon={<AddIcon />}
                     onClick={handleAddExercise} 
-                    style={style.buttonPrimary}
                 >
-                    + Añadir Ejercicio
-                </button>
-                <button 
+                    Añadir Ejercicio
+                </Button>
+                <Button 
+                    variant="contained" 
+                    color="success" // Usamos 'success' para el guardado
+                    startIcon={<SaveIcon />}
                     onClick={handleSaveChanges} 
-                    style={style.buttonSecondary}
                 >
                     Guardar Cambios
-                </button>
-            </div>
+                </Button>
+            </Box>
             
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                <button 
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+                <Button 
+                    variant="outlined" 
+                    color="inherit" // Color por defecto o secundario
                     onClick={() => navigate('/routines')} 
-                    style={{ ...style.buttonSecondary, backgroundColor: '#adb5bd' }}
                 >
                     Cancelar y Volver
-                </button>
-            </div>
-        </div>
+                </Button>
+            </Box>
+        </Container>
     );
 };
 

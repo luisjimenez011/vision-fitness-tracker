@@ -1,13 +1,13 @@
 import React from 'react';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer 
+    LineChart, Line, XAxis, YAxis, CartesianGrid, 
+    Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
+// ⬇️ Importaciones de MUI
+import { Box, Typography, useTheme } from '@mui/material';
 
 // =========================================================================
-// DEFINICIÓN DE MÉTRICAS
-// Las claves ('totalVolume', 'totalDuration', etc.) DEBEN coincidir con los datos MAPPEDOS
-// en ProfilePage.jsx.
+// DEFINICIÓN DE MÉTRICAS (MANTENIDA)
 // =========================================================================
 const METRIC_DETAILS = {
     // Métricas principales (seleccionables por el usuario)
@@ -19,31 +19,47 @@ const METRIC_DETAILS = {
 };
 
 // =========================================================================
-// Función de Tooltip Personalizado
+// Función de Tooltip Personalizado (MIGRADA A MUI)
 // =========================================================================
 const CustomTooltip = ({ active, payload, label }) => {
+    // Usamos useTheme dentro de la función si es un componente de función
+    // Pero como es un componente renderizado por Recharts, no podemos usar hooks directamente aquí.
+    // Usaremos Box y Typography para simular el estilo Dark/MUI.
+    
     if (active && payload && payload.length) {
         return (
-            <div style={{ 
-                padding: '10px', 
-                backgroundColor: 'rgba(44, 62, 80, 0.95)',
-                border: '1px solid #34495e', 
-                borderRadius: '5px', 
-                color: 'white',
-                fontSize: '14px'
-            }}>
-                <p className="font-bold text-base mb-1">{label}</p>
+            <Box 
+                sx={{ 
+                    // Estilos reemplazando el `div` del tooltip
+                    p: 1.5, 
+                    backgroundColor: 'rgba(30, 40, 50, 0.95)', // Fondo oscuro
+                    border: '1px solid',
+                    borderColor: 'primary.dark', 
+                    borderRadius: '8px', 
+                    color: 'white',
+                    fontSize: '14px',
+                    boxShadow: 6
+                }}
+            >
+                <Typography variant="subtitle1" component="p" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                    {label}
+                </Typography>
                 {payload.map((item, index) => {
                     const detail = METRIC_DETAILS[item.dataKey];
                     const unit = detail ? detail.unit : '';
                     
                     return (
-                        <p key={index} style={{ color: item.color }} className="capitalize">
-                            {item.name}: {item.value.toLocaleString('es-ES')} {unit}
-                        </p>
+                        <Typography 
+                            key={index} 
+                            component="p"
+                            variant="body2"
+                            sx={{ color: item.color, textTransform: 'capitalize' }}
+                        >
+                            {item.name}: **{item.value.toLocaleString('es-ES')}** {unit}
+                        </Typography>
                     );
                 })}
-            </div>
+            </Box>
         );
     }
     return null;
@@ -54,25 +70,28 @@ const CustomTooltip = ({ active, payload, label }) => {
  * Componente de gráfico de línea para la progresión global mensual.
  */
 const ProfileChart = ({ data, selectedMetric }) => {
-    
+    const theme = useTheme(); // Para acceder a los colores del tema de MUI
     const mainMetric = METRIC_DETAILS[selectedMetric];
 
-    if (!mainMetric) return <div>Métrica de gráfica no válida.</div>;
+    if (!mainMetric) return <Typography color="error">Métrica de gráfica no válida.</Typography>;
 
     return (
-        <div style={{ width: '100%', height: '100%' }}>
+        // Reemplazamos el div por Box
+        <Box sx={{ width: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
                     
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    {/* Reemplazamos el color fijo de la grilla por un color del tema */}
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
                     
-                    {/* Eje X (Mes/Año) - Usa la clave 'month' (mapeada en ProfilePage) */}
+                    {/* Eje X (Mes/Año) */}
                     <XAxis 
                         dataKey="month" 
-                        stroke="#333" 
+                        stroke={theme.palette.text.primary} // Color de texto primario
                         angle={-15} 
                         textAnchor="end" 
                         height={50}
+                        style={{ fontSize: '12px' }}
                     />
                     
                     {/* Eje Y PRINCIPAL (Dinámico) */}
@@ -85,7 +104,7 @@ const ProfileChart = ({ data, selectedMetric }) => {
                             position: 'insideLeft', 
                             fill: mainMetric.color, 
                             dy: 20,
-                            style: { fontWeight: 'bold' }
+                            style: { fontWeight: 'bold', fontSize: '13px' } // Estilo del label
                         }} 
                     />
                     
@@ -100,21 +119,22 @@ const ProfileChart = ({ data, selectedMetric }) => {
                             position: 'insideRight', 
                             fill: METRIC_DETAILS.totalWorkouts.color, 
                             dy: -20,
-                            style: { fontWeight: 'bold' }
+                            style: { fontWeight: 'bold', fontSize: '13px' } // Estilo del label
                         }} 
                     />
                     
                     <Tooltip content={<CustomTooltip />} />
-                    <Legend wrapperStyle={{ paddingTop: '10px' }} />
                     
-                    {/* RENDERIZADO DINÁMICO DE LÍNEAS */}
+                    {/* Ajustamos el estilo del contenedor de la leyenda con Box */}
+                    <Legend wrapperStyle={{ paddingTop: '10px', color: theme.palette.text.secondary }} />
+                    
+                    {/* RENDERIZADO DINÁMICO DE LÍNEAS (Lógica mantenida) */}
                     {Object.keys(METRIC_DETAILS).map(key => {
                         const detail = METRIC_DETAILS[key];
                         
                         const isMainMetric = key === selectedMetric;
                         const isSecondaryMetric = key === 'totalWorkouts';
                         
-                        // Solo renderizamos la métrica principal y la de entrenamientos.
                         if (!isMainMetric && !isSecondaryMetric) {
                             return null;
                         }
@@ -136,7 +156,7 @@ const ProfileChart = ({ data, selectedMetric }) => {
                     })}
                 </LineChart>
             </ResponsiveContainer>
-        </div>
+        </Box>
     );
 };
 

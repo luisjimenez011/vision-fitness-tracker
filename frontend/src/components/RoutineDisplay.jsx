@@ -1,4 +1,103 @@
 import React, { useState, useEffect } from 'react';
+import { 
+    Box, 
+    Typography, 
+    TextField, 
+    Button, 
+    Paper, 
+    Grid,
+    Divider,
+    useTheme 
+} from '@mui/material';
+import SaveIcon from '@mui/icons-material/Save'; 
+import RefreshIcon from '@mui/icons-material/Refresh'; 
+
+// =========================================================================
+// 1. DEFINICIÓN DEL SUBCOMPONENTE ExerciseRow (FUERA DEL COMPONENTE PRINCIPAL)
+//    Esto evita la pérdida de foco al actualizar el estado.
+// =========================================================================
+
+/**
+ * Fila editable para un solo ejercicio.
+ * Se define fuera de RoutineDisplay para optimizar el rendimiento.
+ */
+const ExerciseRow = ({ exercise, dayIndex, exerciseIndex, handleExerciseChange }) => {
+    const theme = useTheme();
+
+    return (
+        <Paper 
+            elevation={0} 
+            sx={{ 
+                p: 2, 
+                mb: 2, 
+                // Color de fondo sutil que respeta el modo oscuro/claro
+                bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' 
+            }}
+        >
+            {/* Nombre del Ejercicio (TextField para input) */}
+            <TextField
+                label="Ejercicio"
+                variant="standard"
+                fullWidth
+                value={exercise.name}
+                // Handler pasado por props
+                onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'name', e.target.value)}
+                sx={{ mb: 1 }}
+                InputProps={{
+                    style: { fontSize: '1.1rem', fontWeight: 500, color: theme.palette.text.primary }
+                }}
+            />
+            
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+                {/* Sets */}
+                <Grid item xs={6}>
+                    <TextField
+                        label="Sets"
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        value={exercise.sets}
+                        // Handler pasado por props
+                        onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'sets', e.target.value)}
+                    />
+                </Grid>
+                {/* Reps */}
+                <Grid item xs={6}>
+                    <TextField
+                        label="Repeticiones"
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        value={exercise.reps}
+                        // Handler pasado por props
+                        onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'reps', e.target.value)}
+                    />
+                </Grid>
+                {/* Notas (Opcional) */}
+                {exercise.notes !== undefined && (
+                     <Grid item xs={12}>
+                        <TextField
+                            label="Notas"
+                            variant="outlined"
+                            size="small"
+                            fullWidth
+                            multiline
+                            maxRows={2}
+                            value={exercise.notes || ''}
+                            // Handler pasado por props
+                            onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'notes', e.target.value)}
+                        />
+                    </Grid>
+                )}
+            </Grid>
+        </Paper>
+    );
+};
+
+
+// =========================================================================
+// 2. COMPONENTE PRINCIPAL: RoutineDisplay
+// =========================================================================
 
 /**
  * @typedef {object} Exercise
@@ -17,119 +116,128 @@ import React, { useState, useEffect } from 'react';
 
 /**
  * @typedef {object} RoutineData
- * @property {string} name // <-- CORRECCIÓN: Usamos 'name' en lugar de 'routine_name'
- * @property {DayWorkout[]} workouts // <-- CORRECCIÓN: Usamos 'workouts' en lugar de 'schedule'
+ * @property {string} name // Nombre de la rutina
+ * @property {DayWorkout[]} workouts // Días de entrenamiento
  * @property {string} [description]
  */
 
 /**
- * @param {{
+ * Componente que muestra y permite editar una rutina de entrenamiento.
+ * Migrado a Material-UI.
+ * * @param {{
  * routineData: RoutineData;
  * onSave: (updatedRoutine: RoutineData) => void;
  * onGenerateNew: () => void;
  * }} props
  */
 const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
+    // Usamos la prop como valor inicial del estado local para la edición
     const [editableRoutine, setEditableRoutine] = useState(routineData);
+    const theme = useTheme();
 
     useEffect(() => {
+        // Sincronizar el estado interno cuando cambian los props externos
         setEditableRoutine(routineData);
     }, [routineData]);
 
     const handleRoutineNameChange = (e) => {
-        // CORRECCIÓN: Actualizamos la clave 'name'
         setEditableRoutine({ ...editableRoutine, name: e.target.value });
     };
 
     const handleExerciseChange = (dayIndex, exerciseIndex, field, value) => {
-        // CORRECCIÓN: Usamos 'workouts'
+        // Creación inmutable de copias para actualizar el estado
         const updatedWorkouts = [...editableRoutine.workouts];
-        updatedWorkouts[dayIndex].exercises[exerciseIndex][field] = value;
+        updatedWorkouts[dayIndex].exercises[exerciseIndex] = {
+            ...updatedWorkouts[dayIndex].exercises[exerciseIndex],
+            [field]: value,
+        };
         setEditableRoutine({ ...editableRoutine, workouts: updatedWorkouts });
     };
 
-    if (!editableRoutine || !editableRoutine.workouts) { // Manejo de nulo
-        return <p>No hay rutina para mostrar o la estructura es inválida.</p>;
+    if (!editableRoutine || !editableRoutine.workouts) {
+        return (
+            <Typography color="text.secondary" sx={{ p: 3 }}>
+                No hay rutina para mostrar o la estructura es inválida.
+            </Typography>
+        );
     }
 
     return (
-        <div className="p-4 bg-gray-100 rounded-lg">
-            <div className="flex justify-between items-center mb-4">
-                <input
-                    type="text"
-                    // CORRECCIÓN: Leer la clave 'name'
+        <Paper elevation={3} sx={{ p: 4, bgcolor: theme.palette.background.paper }}>
+            {/* Encabezado y Botones */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 3 }}>
+                <TextField
+                    label="Nombre de la Rutina"
+                    variant="standard"
                     value={editableRoutine.name}
                     onChange={handleRoutineNameChange}
-                    className="text-2xl font-bold text-gray-800 bg-transparent border-b-2 border-gray-300 focus:outline-none focus:border-blue-500"
+                    sx={{ flexGrow: 1, mr: 2 }}
+                    InputProps={{
+                        // Estilos para el nombre de la rutina
+                        style: { fontSize: '1.8rem', fontWeight: 'bold', color: theme.palette.text.primary }
+                    }}
                 />
-                <div className="flex gap-2">
-                    <button
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                        variant="contained"
+                        color="primary"
                         onClick={() => onSave(editableRoutine)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        startIcon={<SaveIcon />}
                     >
-                        Guardar Rutina
-                    </button>
-                    <button
+                        Guardar
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        color="secondary"
                         onClick={onGenerateNew}
-                        className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                        startIcon={<RefreshIcon />}
                     >
                         Generar Nuevo
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </Box>
+            </Box>
             
             {/* Descripción general de la rutina */}
             {editableRoutine.description && (
-                <p className="text-gray-600 mb-6 italic">{editableRoutine.description}</p>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 4, fontStyle: 'italic' }}>
+                    {editableRoutine.description}
+                </Typography>
             )}
 
+            <Divider sx={{ mb: 4 }} />
 
-            <div className="space-y-6">
-                {/* CORRECCIÓN: Iterar sobre 'workouts' en lugar de 'schedule' */}
+            {/* Iteración de Días de Entrenamiento */}
+            <Grid container spacing={4}>
                 {editableRoutine.workouts.map((day, dayIndex) => (
-                    <div key={dayIndex} className="p-4 bg-white rounded-lg shadow">
-                        <h3 className="text-xl font-semibold mb-1 text-blue-700">{day.day}</h3>
-                        <p className="text-sm text-gray-500 mb-3 font-medium">Focus: {day.focus}</p>
+                    // Cada día es una columna en el Grid (ocupa 12 en móvil, 6 en tablet, 4 en desktop)
+                    <Grid item xs={12} md={6} lg={4} key={dayIndex}>
+                        <Paper elevation={1} sx={{ p: 3 }}>
+                            <Typography variant="h5" component="h3" sx={{ fontWeight: 'bold', mb: 0.5, color: 'primary.main' }}>
+                                {day.day}
+                            </Typography>
+                            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 3 }}>
+                                Foco: {day.focus}
+                            </Typography>
+                            <Divider sx={{ mb: 3 }} />
 
-                        <div className="space-y-4">
-                            {day.exercises.map((exercise, exerciseIndex) => (
-                                <div key={exerciseIndex} className="p-3 bg-gray-50 rounded-md border border-gray-100">
-                                    {/* Nombre del Ejercicio */}
-                                    <input
-                                        type="text"
-                                        value={exercise.name}
-                                        onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'name', e.target.value)}
-                                        className="text-lg font-medium text-gray-800 bg-transparent border-b border-gray-200 focus:outline-none focus:border-blue-400 w-full"
+                            <Box sx={{ minHeight: '150px' }}>
+                                {/* Ejercicios */}
+                                {day.exercises.map((exercise, exerciseIndex) => (
+                                    <ExerciseRow 
+                                        key={exerciseIndex}
+                                        exercise={exercise}
+                                        dayIndex={dayIndex}
+                                        exerciseIndex={exerciseIndex}
+                                        // Pasamos la función de manejo de cambios
+                                        handleExerciseChange={handleExerciseChange} 
                                     />
-                                    <div className="flex justify-between mt-2 text-sm text-gray-600">
-                                        {/* Sets */}
-                                        <span>
-                                            Sets:
-                                            <input
-                                                type="text"
-                                                value={exercise.sets}
-                                                onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'sets', e.target.value)}
-                                                className="ml-2 bg-transparent border-b border-gray-200 focus:outline-none focus:border-blue-400 w-16"
-                                            />
-                                        </span>
-                                        {/* Reps */}
-                                        <span>
-                                            Reps:
-                                            <input
-                                                type="text"
-                                                value={exercise.reps}
-                                                onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'reps', e.target.value)}
-                                                className="ml-2 bg-transparent border-b border-gray-200 focus:outline-none focus:border-blue-400 w-24"
-                                            />
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                                ))}
+                            </Box>
+                        </Paper>
+                    </Grid>
                 ))}
-            </div>
-        </div>
+            </Grid>
+        </Paper>
     );
 };
 
