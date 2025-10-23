@@ -44,7 +44,12 @@ const SelectedDayPanel = ({ log, onClose }) => {
         let result = '';
         if (hours > 0) result += `${hours}h `;
         if (minutes > 0) result += `${minutes}m `;
-        result += `${seconds}s`;
+        // Mostrar segundos solo si no hay horas ni minutos, o si es un número redondo
+        if (seconds > 0 || (hours === 0 && minutes === 0)) result += `${seconds}s`;
+        
+        // Si dura 0, devuelve '0s'
+        if (result.trim() === '') return '0s';
+        
         return result.trim();
     };
 
@@ -70,7 +75,7 @@ const SelectedDayPanel = ({ log, onClose }) => {
                 fontWeight: 'bold'
             }}>
                 <EventNoteIcon sx={{ mr: 1, verticalAlign: 'middle', color: 'secondary.main' }} />
-                Detalles del Entrenamiento: <Box component="span" sx={{ color: 'primary.light' }}>{log.dateString}</Box>
+                Detalles del Entreno: <Box component="span" sx={{ color: 'primary.light' }}>{log.dateString}</Box>
             </DialogTitle>
             
             <DialogContent dividers sx={{ borderColor: 'grey.800' }}>
@@ -83,7 +88,7 @@ const SelectedDayPanel = ({ log, onClose }) => {
                         <Typography variant="body2" color="secondary.light" sx={{ fontWeight: 'bold' }}>Duración:</Typography>
                         <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
                             <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: 'primary.light' }} />
-                            {formatDuration(log.duration_seconds)}
+                            {formatDuration(log.duration_seconds || 0)}
                         </Typography>
                     </Box>
                 </Box>
@@ -100,18 +105,54 @@ const SelectedDayPanel = ({ log, onClose }) => {
                             p: 0,
                             pr: 1, 
                         }}>
-                            {log.log_data.map((data, index) => (
-                                <React.Fragment key={index}>
-                                    <ListItem disablePadding sx={{ py: 0.5, px: 0, justifyContent: 'space-between' }}>
-                                        <Typography variant="body2" sx={{ color: 'grey.400', flexGrow: 1 }}>
-                                            <Box component="strong" sx={{ color: '#fff' }}>{data.exerciseName}</Box>
+                            {/* AGRUPAR sets por ejercicio para una mejor visualización del detalle */}
+                            {log.log_data.reduce((acc, data) => {
+                                const last = acc[acc.length - 1];
+                                if (last && last.name === data.exerciseName) {
+                                    last.sets.push(data);
+                                } else {
+                                    acc.push({ 
+                                        name: data.exerciseName, 
+                                        sets: [data] 
+                                    });
+                                }
+                                return acc;
+                            }, []).map((exerciseGroup, index) => (
+                                <React.Fragment key={exerciseGroup.name}>
+                                    <ListItem 
+                                        disablePadding 
+                                        sx={{ 
+                                            flexDirection: 'column', 
+                                            alignItems: 'flex-start',
+                                            py: 0.8, 
+                                        }}
+                                    >
+                                        <Typography variant="body1" sx={{ color: 'primary.light', fontWeight: 'bold', mb: 0.5 }}>
+                                            {exerciseGroup.name} ({exerciseGroup.sets.length} sets)
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: 'primary.light', fontWeight: 'bold' }}>
-                                            {data.reps} reps @ {data.weight}{data.isBodyweight ? ' BW' : ' kg'}
-                                        </Typography>
+                                        
+                                        {exerciseGroup.sets.map((set, setIndex) => (
+                                            <Typography 
+                                                key={setIndex} 
+                                                variant="caption" 
+                                                component="div"
+                                                sx={{ 
+                                                    color: 'grey.400', 
+                                                    ml: 1,
+                                                    display: 'flex', 
+                                                    justifyContent: 'space-between', 
+                                                    width: '100%'
+                                                }}
+                                            >
+                                                <Box component="span" sx={{ width: 40, flexShrink: 0 }}>Set {setIndex + 1}:</Box>
+                                                <Box component="span" sx={{ fontWeight: 'bold' }}>
+                                                    {set.reps} reps X {set.weight}{set.isBodyweight ? ' BW' : ' kg'}
+                                                </Box>
+                                            </Typography>
+                                        ))}
                                     </ListItem>
                                     {/* Divisor */}
-                                    {index < totalSets - 1 && <Divider component="li" sx={{ borderColor: 'grey.700' }} />}
+                                    {index < uniqueExercises - 1 && <Divider component="li" sx={{ borderColor: 'grey.700', my: 0.5 }} />}
                                 </React.Fragment>
                             ))}
                         </List>
@@ -148,23 +189,27 @@ const TrainingCalendar = ({ logs = [], loading }) => {
 
     // --- Funciones de formato de fecha (Lógica clave) ---
 
-    // 🟢 FUNCIÓN CORREGIDA Y ROBUSTA: Convierte cualquier fecha/string a un string "YYYY-MM-DD" basado en la HORA LOCAL.
+    // 🟢 FUNCIÓN MEJORADA: Convierte cualquier fecha/string a un string "YYYY-MM-DD" basado en la HORA LOCAL.
     const getLocalDayString = (dateInput) => {
         if (!dateInput) return null;
         
         let dateObject;
 
-        // Si el input es un string de la BD ('YYYY-MM-DD HH:MM:SS.ms'), lo convertimos primero
         if (typeof dateInput === 'string') {
-            // Intentamos limpiar y tratar el string.
+            // Reemplazamos espacio por 'T' para forzar el formato ISO 8601,
+            // y agregamos 'Z' si no hay información de zona horaria, asumiendo UTC.
             let dateToParse = dateInput.trim().replace(' ', 'T');
             if (dateToParse.includes('.')) {
-                 dateToParse = dateToParse.split('.')[0]; 
+                dateToParse = dateToParse.split('.')[0]; 
             }
-            // new Date() sin 'Z' al final lo interpreta como hora local (o desconocida).
+            if (!dateToParse.includes('Z') && dateToParse.includes('T')) {
+                // Si la DB no pone Z, asumimos que es UTC para evitar la manipulación horaria.
+                dateToParse += 'Z'; 
+            } else if (!dateToParse.includes('T') && !dateToParse.includes('Z')) {
+                 // Si es solo fecha, lo dejamos así para que new Date lo trate como medianoche local
+            }
             dateObject = new Date(dateToParse);
 
-        // Si es un objeto Date (del calendario), lo usamos directamente
         } else if (dateInput instanceof Date) {
             dateObject = dateInput;
         } else {
@@ -175,32 +220,50 @@ const TrainingCalendar = ({ logs = [], loading }) => {
 
         // Usamos funciones locales para obtener el día tal como se ve en la zona horaria del usuario.
         // Formato: 2025-10-07
-        return `${dateObject.getFullYear()}-${String(dateObject.getMonth() + 1).padStart(2, '0')}-${String(dateObject.getDate()).padStart(2, '0')}`; 
+        const year = dateObject.getFullYear();
+        const month = String(dateObject.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObject.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`; 
     };
 
 
-    // 🟢 PROCESAMIENTO DE DATOS CON useMemo
+    // 🟢 PROCESAMIENTO DE DATOS CON useMemo (MANTENIDO)
     const { allLogsProcessed, trainedDates } = useMemo(() => {
         if (!logs || logs.length === 0) {
             return { allLogsProcessed: [], trainedDates: [] };
         }
         
-        const processedLogs = logs.map(log => {
+        // Usamos un objeto para agrupar logs que caen en el mismo día local
+        const logMap = {};
+        
+        logs.forEach(log => {
             // Usamos la función LocalDayString para obtener el día del log de la DB
-            const dateString = getLocalDayString(log.created_at); 
+            const dateString = getLocalDayString(log.created_at);
             
-            const parsedLogData = typeof log.log_data === 'string' && log.log_data.length > 0
-                ? JSON.parse(log.log_data)
-                : (log.log_data || []);
-            
-            return { ...log, dateString, log_data: parsedLogData };
+            if (dateString) {
+                const parsedLogData = typeof log.log_data === 'string' && log.log_data.length > 0
+                    ? JSON.parse(log.log_data)
+                    : (log.log_data || []);
+                
+                // Si hay logs duplicados en el mismo día (dos sesiones de entrenamiento), 
+                // priorizamos el log más reciente o los fusionamos si fuera necesario.
+                // Aquí, simplemente reemplazamos con el último log encontrado para ese día.
+                logMap[dateString] = { 
+                    ...log, 
+                    dateString, 
+                    log_data: parsedLogData,
+                    // Si tienes múltiples logs por día, podrías sumar duraciones, etc.
+                };
+            }
         });
         
+        const allLogsProcessed = Object.values(logMap);
+        
         // Crea un array único de las fechas que tienen logs (formato YYYY-MM-DD LOCAL)
-        const allMappedDates = processedLogs.map(log => log.dateString);
-        const uniqueDates = [...new Set(allMappedDates)].filter(Boolean);
+        const uniqueDates = allLogsProcessed.map(log => log.dateString);
 
-        return { allLogsProcessed: processedLogs, trainedDates: uniqueDates };
+        return { allLogsProcessed, trainedDates: uniqueDates };
     }, [logs]);
 
 
@@ -213,6 +276,7 @@ const TrainingCalendar = ({ logs = [], loading }) => {
         const dayStringForComparison = getLocalDayString(date);
 
         // Buscamos el log con esa fecha de entrenamiento (YYYY-MM-DD LOCAL)
+        // Usamos el Map del useMemo para una búsqueda eficiente si hubiera más lógica
         const logForDay = allLogsProcessed.find(log => log.dateString === dayStringForComparison);
         
         setSelectedLog(logForDay || null);
@@ -223,7 +287,7 @@ const TrainingCalendar = ({ logs = [], loading }) => {
     };
 
     // ------------------------------------------------------------------
-    // --- 🔑 Lógica de Coloreado (renderDay) - CON COLOR ROSA
+    // --- Lógica de Coloreado (renderDay) - MANTENIDA
     // ------------------------------------------------------------------
     const renderDay = (dayProps) => {
         
@@ -245,10 +309,8 @@ const TrainingCalendar = ({ logs = [], loading }) => {
         const isSelectedForDetails = selectedDate && getLocalDayString(selectedDate) === dayString;
         
         // ** COLORES **
-        // 🚀 USAMOS LA PALETA SECONDARY (AHORA ROSA EN theme.js)
         const trainedColor = 'secondary.dark'; 
         const trainedHover = 'secondary.main'; 
-        // 🚀 FIN DEL CAMBIO
         
         return (
             <PickersDay 
@@ -340,14 +402,20 @@ const TrainingCalendar = ({ logs = [], loading }) => {
                         <DateCalendar
                             value={selectedDate}
                             onChange={handleDayClick}
-                            // 🔑 Uso correcto de slots en lugar de renderDay (como en MUI)
+                            // Uso correcto de slots para el día
                             slots={{ day: renderDay }} 
                             disableFuture
                             sx={{
+                                // Estilos del calendario para temas oscuros (mejor contraste)
                                 '.MuiPickersCalendarHeader-label': { color: 'primary.light', fontWeight: 'bold' },
                                 '.MuiDayCalendar-weekDayLabel': { color: 'grey.400', fontWeight: '500' },
                                 '.MuiPickersCalendarHeader-root': { color: 'white' },
                                 '.Mui-disabled': { color: 'grey.600' },
+                                '.MuiDayCalendar-header': { justifyContent: 'space-around' },
+                                // Ajuste fino para el color de los días (para que no se vean demasiado tenues)
+                                '.MuiPickersDay-root:not(.Mui-selected)': {
+                                    color: 'grey.300',
+                                }
                             }}
                         />
                     </LocalizationProvider>

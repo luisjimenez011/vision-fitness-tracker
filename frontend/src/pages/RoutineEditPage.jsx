@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
-// ⬇️ IMPORTACIONES DE MUI
+// ⬇️ IMPORTACIONES DE MUI (Grid y Stack añadidos)
 import {
     Container,
     Box,
@@ -13,12 +13,13 @@ import {
     IconButton,
     CircularProgress,
     Alert,
-    InputAdornment, // Para iconos en TextFields
+    InputAdornment, 
+    Grid, // ⭐️ Importación clave
+    Stack // ⭐️ Importación clave
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 
 const RoutineEditPage = () => {
@@ -37,7 +38,6 @@ const RoutineEditPage = () => {
                 const response = await apiClient.get(`/routine/${routineId}`);
                 const routineData = response.data;
                 
-                // Usamos SOLO el primer 'workout'
                 const workout = routineData.plan_json?.workouts?.[0];
 
                 if (!workout) {
@@ -64,7 +64,7 @@ const RoutineEditPage = () => {
         fetchRoutine();
     }, [routineId]);
 
-    // --- LÓGICA DE MANEJO DE CAMBIOS (Mantenida, adaptada a MUI) ---
+    // --- LÓGICA DE MANEJO DE CAMBIOS (Sin cambios funcionales) ---
 
     const handleNameChange = (e) => {
         setEditableRoutine(prev => ({ ...prev, name: e.target.value }));
@@ -73,7 +73,6 @@ const RoutineEditPage = () => {
     const handleExerciseChange = (index, field, value) => {
         setEditableRoutine(prev => {
             const newExercises = [...prev.workout.exercises];
-            // Aseguramos que 'sets' y 'reps' sean números (o cadena vacía)
             const parsedValue = field === 'sets' || field === 'reps' ? parseInt(value, 10) || '' : value;
 
             newExercises[index] = {
@@ -112,9 +111,8 @@ const RoutineEditPage = () => {
         }
 
         try {
-            // Reconstruimos la estructura para el backend
             const updatedPlanJson = {
-                workouts: [{ // Empaquetamos en el array 'workouts' de nuevo
+                workouts: [{ 
                     day: editableRoutine.workout.day,
                     focus: editableRoutine.workout.focus,
                     description: editableRoutine.workout.description || 'Sesión de entrenamiento individual modificada.',
@@ -124,13 +122,9 @@ const RoutineEditPage = () => {
             
             const payload = {
                 name: editableRoutine.name,
-                // El backend espera plan_json como JSON serializado si no es un campo JSON nativo
                 plan_json: updatedPlanJson, 
             };
             
-            // Si tu API necesita la cadena JSON, usa: JSON.stringify(updatedPlanJson)
-            // Aquí asumimos que apiClient maneja la serialización, enviando el objeto.
-
             await apiClient.put(`/routine/${routineId}`, payload);
 
             alert('Rutina actualizada con éxito!');
@@ -164,15 +158,21 @@ const RoutineEditPage = () => {
     return (
         <Container component="main" maxWidth="md" sx={{ py: 4, minHeight: '100vh' }}>
             
-            <Typography variant="h4" component="h1" color="primary" align="center" sx={{ mb: 1, fontWeight: 700 }}>
+            <Typography 
+                variant="h4" 
+                component="h1" 
+                color="primary" 
+                align="center" 
+                sx={{ mb: 1, fontWeight: 700, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}
+            >
                 Editar Rutina
             </Typography>
-            <Typography variant="h6" color="text.secondary" align="center" sx={{ mb: 4 }}>
+            <Typography variant="h6" color="text.secondary" align="center" sx={{ mb: 4, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                 {originalRoutineName}
             </Typography>
 
-            {/* Edición del Nombre de la Rutina */}
-            <Card sx={{ p: 3, mb: 4, boxShadow: 3 }}>
+            {/* Edición del Nombre de la Rutina (Ya es fullWidth, así que es responsivo) */}
+            <Card sx={{ p: { xs: 2, sm: 3 }, mb: 4, boxShadow: 3 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>Nombre de la Rutina:</Typography>
                 <TextField
                     fullWidth
@@ -193,7 +193,7 @@ const RoutineEditPage = () => {
                     <Card 
                         key={index} 
                         sx={{ 
-                            p: 3, 
+                            p: { xs: 2, sm: 3 }, // Padding responsivo
                             display: 'flex', 
                             flexDirection: 'column', 
                             boxShadow: 2, 
@@ -202,7 +202,7 @@ const RoutineEditPage = () => {
                         }}
                     >
                         
-                        {/* Nombre del Ejercicio */}
+                        {/* Nombre del Ejercicio (Ya es fullWidth) */}
                         <TextField
                             fullWidth
                             label="Nombre del Ejercicio"
@@ -221,46 +221,56 @@ const RoutineEditPage = () => {
                             }}
                         />
                         
-                        {/* Sets, Reps y Botón de Eliminar */}
-                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+                        {/* ⭐️ Sets, Reps y Botón de Eliminar (Usando Grid para responsividad) ⭐️ */}
+                        <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                            {/* Sets (Ocupa la mitad del espacio) */}
+                            <Grid item xs={6} sm={4}> 
+                                <TextField
+                                    label="Sets"
+                                    type="number"
+                                    size="small"
+                                    fullWidth // Ocupa todo el ancho de la Grid item
+                                    value={exercise.sets}
+                                    onChange={(e) => handleExerciseChange(index, 'sets', e.target.value)}
+                                />
+                            </Grid>
                             
-                            {/* Sets */}
-                            <TextField
-                                label="Sets"
-                                type="number"
-                                size="small"
-                                sx={{ width: 100 }}
-                                value={exercise.sets}
-                                onChange={(e) => handleExerciseChange(index, 'sets', e.target.value)}
-                            />
-                            
-                            {/* Reps */}
-                            <TextField
-                                label="Reps"
-                                type="number"
-                                size="small"
-                                sx={{ width: 100 }}
-                                value={exercise.reps}
-                                onChange={(e) => handleExerciseChange(index, 'reps', e.target.value)}
-                            />
+                            {/* Reps (Ocupa la mitad del espacio) */}
+                            <Grid item xs={6} sm={4}>
+                                <TextField
+                                    label="Reps"
+                                    type="number"
+                                    size="small"
+                                    fullWidth // Ocupa todo el ancho de la Grid item
+                                    value={exercise.reps}
+                                    onChange={(e) => handleExerciseChange(index, 'reps', e.target.value)}
+                                />
+                            </Grid>
 
-                            {/* Botón de Eliminar */}
-                            <IconButton 
-                                color="error"
-                                onClick={() => handleRemoveExercise(index)} 
-                                aria-label="quitar ejercicio"
-                                sx={{ ml: 'auto' }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
-                        </Box>
+                            {/* Botón de Eliminar (Alineado a la derecha en desktop, o el espacio restante) */}
+                            <Grid item xs={12} sm={4} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
+                                <Button 
+                                    variant="outlined"
+                                    color="error"
+                                    onClick={() => handleRemoveExercise(index)} 
+                                    startIcon={<DeleteIcon />}
+                                    size="small"
+                                    // Se convierte a ancho completo en móvil para que el botón no sea diminuto
+                                    fullWidth={window.innerWidth < 600} 
+                                >
+                                    Eliminar
+                                </Button>
+                            </Grid>
+                        </Grid>
 
-                        {/* Notas */}
+                        {/* Notas (Ya es fullWidth) */}
                         <TextField
                             fullWidth
                             label="Notas (Opcional)"
                             variant="outlined"
                             size="small"
+                            multiline
+                            maxRows={3}
                             placeholder="Ej: Descanso 90s, superserie con..."
                             value={exercise.notes || ''}
                             onChange={(e) => handleExerciseChange(index, 'notes', e.target.value)}
@@ -269,30 +279,36 @@ const RoutineEditPage = () => {
                 ))}
             </Box>
 
-            {/* Controles para Añadir y Guardar */}
-            <Box sx={{ mt: 5, textAlign: 'center', display: 'flex', justifyContent: 'center', gap: 2 }}>
+            {/* ⭐️ Controles para Añadir y Guardar (Usando Stack para responsividad) ⭐️ */}
+            <Stack 
+                direction={{ xs: 'column', sm: 'row' }} // Apilar en móvil, en línea en desktop
+                spacing={2}
+                sx={{ mt: 5, justifyContent: 'center' }}
+            >
                 <Button 
                     variant="contained" 
                     color="primary"
                     startIcon={<AddIcon />}
                     onClick={handleAddExercise} 
+                    sx={{ flexGrow: { xs: 1, sm: 0 } }} // Ancho completo en móvil
                 >
                     Añadir Ejercicio
                 </Button>
                 <Button 
                     variant="contained" 
-                    color="success" // Usamos 'success' para el guardado
+                    color="success"
                     startIcon={<SaveIcon />}
                     onClick={handleSaveChanges} 
+                    sx={{ flexGrow: { xs: 1, sm: 0 } }} // Ancho completo en móvil
                 >
                     Guardar Cambios
                 </Button>
-            </Box>
+            </Stack>
             
             <Box sx={{ mt: 2, textAlign: 'center' }}>
                 <Button 
                     variant="outlined" 
-                    color="inherit" // Color por defecto o secundario
+                    color="inherit"
                     onClick={() => navigate('/routines')} 
                 >
                     Cancelar y Volver

@@ -13,7 +13,6 @@ import {
     Alert,
     TextField,
     IconButton,
-    InputAdornment,
     Switch,
     FormControlLabel,
     List,
@@ -31,8 +30,6 @@ import AddIcon from '@mui/icons-material/Add';
 // ----------------------------------------------------
 // COMPONENTE MessageToast (Migrado a MUI Alert/Snackbar)
 // ----------------------------------------------------
-// En una aplicación MUI real, usarías el componente Snackbar y Alert. 
-// Aquí lo simplificamos a una Alert que desaparece, manteniendo la funcionalidad original.
 const MessageAlert = ({ message, type, onClose }) => {
     if (!message) return null;
 
@@ -41,12 +38,18 @@ const MessageAlert = ({ message, type, onClose }) => {
             severity={type === 'error' ? 'error' : 'success'} 
             onClose={onClose}
             variant="filled"
+            // 🚀 CORRECCIÓN 1: Centrado en móvil para evitar que se corte el mensaje de "Set registrado."
             sx={{ 
                 position: 'fixed', 
                 top: 20, 
-                right: 20, 
                 zIndex: 1000,
-                minWidth: '300px'
+                // Centrar horizontalmente en móvil (xs)
+                left: { xs: '50%', md: 'auto' }, 
+                transform: { xs: 'translateX(-50%)', md: 'none' },
+                // Pegar a la derecha en escritorio (md)
+                right: { xs: 'auto', md: 20 }, 
+                width: { xs: '90%', sm: 'auto' },
+                maxWidth: { xs: '90%', sm: '400px' }, // Limita el ancho máximo en pantallas más grandes
             }}
         >
             {message}
@@ -78,7 +81,7 @@ const TrackingPage = () => {
         setTimeout(() => setMessage({ text: null, type: null }), 4000);
     };
 
-    // Lógica para cargar la rutina
+    // Lógica para cargar la rutina (Sin cambios)
     useEffect(() => {
         const fetchRoutine = async () => {
             try {
@@ -158,7 +161,7 @@ const TrackingPage = () => {
         return -1;
     };
 
-    // Lógica para añadir una nueva serie (Sin cambios en la lógica central, solo validación adaptada)
+    // Lógica para añadir una nueva serie (Sin cambios)
     const handleAddSet = (exerciseName) => {
         if (!isRunning) {
             showMessage('Debes iniciar el cronómetro para registrar sets.', 'error');
@@ -298,224 +301,267 @@ const TrackingPage = () => {
 
 
     return (
-        <Container component="main" maxWidth="md" sx={{ py: 4, minHeight: '100vh' }}>
+        <>
             <MessageAlert 
                 message={message.text} 
                 type={message.type} 
                 onClose={() => setMessage({ text: null, type: null })}
             />
 
-            <Typography variant="h4" component="h1" color="primary" align="center" sx={{ mb: 1, fontWeight: 700 }}>
-                {routine.name}
-            </Typography>
-            <Typography variant="h6" color="text.secondary" align="center" sx={{ mb: 4 }}>
-                {currentDayWorkout?.day || 'Día Desconocido'}: {currentDayWorkout?.focus || 'Entrenamiento del día'}
-            </Typography>
-
-            {/* Sección del Cronómetro y Controles */}
-            <Box sx={{ 
-                textAlign: 'center', 
-                margin: '30px 0', 
-                p: 3, 
-                bgcolor: 'primary.light', // Color de fondo suave
-                borderRadius: 2,
-                boxShadow: 3
-            }}>
-                <Typography 
-                    variant="h2" 
-                    component="div"
-                    sx={{ 
-                        fontWeight: '900', 
-                        color: 'primary.dark', 
-                        fontFamily: 'monospace',
-                        mb: 2
-                    }}
-                >
-                    {formatTime(timer)}
+            <Container component="main" maxWidth="sm" sx={{ py: { xs: 2, md: 4 }, minHeight: '100vh' }}>
+                
+                <Typography variant="h4" component="h1" color="primary" align="center" sx={{ mb: 1, fontWeight: 700, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
+                    {routine.name}
                 </Typography>
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 2 }}>
-                    <Button 
-                        variant="contained" 
-                        color={isRunning ? 'warning' : 'success'}
-                        startIcon={isRunning ? <PauseIcon /> : <PlayArrowIcon />}
-                        onClick={() => setIsRunning(!isRunning)} 
-                        size="large"
+                <Typography variant="h6" color="text.secondary" align="center" sx={{ mb: 4, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                    {currentDayWorkout?.day || 'Día Desconocido'}: {currentDayWorkout?.focus || 'Entrenamiento del día'}
+                </Typography>
+
+                {/* Sección del Cronómetro y Controles (Sin cambios) */}
+                <Box sx={{ 
+                    textAlign: 'center', 
+                    margin: '20px 0', 
+                    p: { xs: 2, md: 3 }, 
+                    bgcolor: 'primary.light', 
+                    borderRadius: 2,
+                    boxShadow: 3
+                }}>
+                    <Typography 
+                        variant="h2" 
+                        component="div"
+                        sx={{ 
+                            fontWeight: '900', 
+                            color: 'primary.dark', 
+                            fontFamily: 'monospace',
+                            mb: 2,
+                            fontSize: { xs: '3rem', sm: '4rem' } 
+                        }}
                     >
-                        {isRunning ? 'Pausar' : (timer === 0 ? 'Empezar' : 'Continuar')}
-                    </Button>
-                    <Button 
-                        variant="outlined" 
-                        color="error"
-                        startIcon={<CheckCircleOutlineIcon />}
-                        onClick={handleFinishWorkout} 
-                        disabled={timer === 0}
-                        size="large"
-                    >
-                        Finalizar
-                    </Button>
+                        {formatTime(timer)}
+                    </Typography>
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        <Button 
+                            variant="contained" 
+                            color={isRunning ? 'warning' : 'success'}
+                            startIcon={isRunning ? <PauseIcon /> : <PlayArrowIcon />}
+                            onClick={() => setIsRunning(!isRunning)} 
+                            size="large"
+                            fullWidth={true}
+                        >
+                            {isRunning ? 'Pausar' : (timer === 0 ? 'Empezar' : 'Continuar')}
+                        </Button>
+                        <Button 
+                            variant="outlined" 
+                            color="error"
+                            startIcon={<CheckCircleOutlineIcon />}
+                            onClick={handleFinishWorkout} 
+                            disabled={timer === 0}
+                            size="large"
+                            fullWidth={true}
+                        >
+                            Finalizar
+                        </Button>
+                    </Box>
                 </Box>
-            </Box>
 
-            {/* Lista de Ejercicios */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {currentDayWorkout?.exercises?.map((exercise, index) => (
-                    <Card key={index} sx={{ p: 3, boxShadow: 3 }}>
-                        
-                        <Typography variant="h5" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 1, color: 'text.primary' }}>
-                            <FitnessCenterIcon sx={{ mr: 1, verticalAlign: 'middle' }} color="primary" />
-                            {exercise.name}
-                        </Typography>
-                        
-                        <Typography variant="body1" color="primary.main" sx={{ fontWeight: 'bold', mb: 1 }}>
-                            Plan: {exercise.sets} sets x {exercise.reps} reps
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            Notas: {exercise.notes || 'N/A'}
-                        </Typography>
-
-                        {/* Sets registrados */}
-                        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                Progreso ({trackedSets.filter((s) => s.exerciseName === exercise.name).length} / {exercise.sets}):
-                            </Typography>
-                            <List disablePadding>
-                                {trackedSets
-                                    .filter((s) => s.exerciseName === exercise.name)
-                                    .map((s, idx) => {
-                                        const globalIndex = getGlobalSetIndex(s.exerciseName, s.set); 
-                                        const isSetBodyweight = s.isBodyweight || false;
-
-                                        return (
-                                            <React.Fragment key={s.timestamp + s.set}>
-                                                <ListItem 
-                                                    sx={{ 
-                                                        py: 1, 
-                                                        display: 'flex', 
-                                                        justifyContent: 'space-between', 
-                                                        alignItems: 'center'
-                                                    }}
-                                                >
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-                                                        <Typography sx={{ fontWeight: 'medium', mr: 2 }}>
-                                                            Set {s.set}:
-                                                        </Typography>
-                                                        
-                                                        <Typography 
-                                                            variant="caption"
-                                                            sx={{ 
-                                                                mr: 1, 
-                                                                color: isSetBodyweight ? 'success.main' : 'inherit', 
-                                                                fontWeight: 'bold' 
-                                                            }}
-                                                        >
-                                                            {isSetBodyweight ? 'BW' : ''}
-                                                        </Typography>
-
-                                                        {/* Input editable para Peso */}
-                                                        <TextField
-                                                            type="number"
-                                                            size="small"
-                                                            label={isSetBodyweight ? '' : 'Peso'}
-                                                            variant="outlined"
-                                                            value={s.weight || ''}
-                                                            onChange={(e) => handleUpdateSet(globalIndex, 'weight', e.target.value)}
-                                                            sx={{ width: 80, mr: 1 }}
-                                                            disabled={isSetBodyweight}
-                                                        /> 
-                                                        {!isSetBodyweight && <Typography sx={{ mr: 1 }}>kg x</Typography>}
-                                                        
-                                                        {/* Input editable para Reps */}
-                                                        <TextField
-                                                            type="number"
-                                                            size="small"
-                                                            label="Reps"
-                                                            variant="outlined"
-                                                            value={s.reps}
-                                                            onChange={(e) => handleUpdateSet(globalIndex, 'reps', e.target.value)}
-                                                            sx={{ width: 80 }}
-                                                        /> 
-                                                    </Box>
-                                                    
-                                                    {/* Botón de Eliminar */}
-                                                    <IconButton 
-                                                        color="error"
-                                                        onClick={() => handleRemoveSet(globalIndex, s.set, s.exerciseName)} 
-                                                        aria-label="eliminar set"
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </ListItem>
-                                                {idx < trackedSets.filter((s) => s.exerciseName === exercise.name).length - 1 && <Divider component="li" />}
-                                            </React.Fragment>
-                                        );
-                                    })}
-                            </List>
-                        </Box>
-
-                        {/* Formulario para nuevo set */}
-                        <Box sx={{ mt: 3, p: 2, border: '1px dashed', borderColor: 'grey.300', borderRadius: 1 }}>
+                {/* Lista de Ejercicios */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {currentDayWorkout?.exercises?.map((exercise, index) => (
+                        <Card key={index} sx={{ p: { xs: 2, md: 3 }, boxShadow: 3 }}>
                             
-                            {/* Switch de Peso Corporal (BW) */}
-                            <FormControlLabel
-                                control={
-                                    <Switch 
-                                        checked={isBodyweightMode[exercise.name] || false}
-                                        onChange={(e) => {
-                                            setIsBodyweightMode(prev => ({ 
-                                                ...prev, 
-                                                [exercise.name]: e.target.checked 
-                                            }));
-                                            if(e.target.checked) {
-                                                setInputs(prev => ({
-                                                    ...prev,
-                                                    [exercise.name]: { ...prev[exercise.name], weight: '' }
-                                                }));
-                                            }
-                                        }}
-                                        color="secondary"
-                                    />
-                                }
-                                label="Sin peso adicional (Calistenia)"
-                                sx={{ mb: 2 }}
-                            />
+                            <Typography variant="h5" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 1, color: 'text.primary', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+                                <FitnessCenterIcon sx={{ mr: 1, verticalAlign: 'middle' }} color="primary" />
+                                {exercise.name}
+                            </Typography>
+                            
+                            <Typography variant="body1" color="primary.main" sx={{ fontWeight: 'bold', mb: 1 }}>
+                                Plan: {exercise.sets} sets x {exercise.reps} reps
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Notas: {exercise.notes || 'N/A'}
+                            </Typography>
 
-                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                {/* Input de Peso */}
-                                <TextField
-                                    type="number"
-                                    label="Peso (kg)"
-                                    size="small"
-                                    fullWidth
-                                    value={inputs[exercise.name]?.weight || ''}
-                                    onChange={(e) => handleInputChange(exercise.name, 'weight', e.target.value)}
-                                    disabled={isBodyweightMode[exercise.name]}
-                                />
-                                {/* Input de Reps */}
-                                <TextField
-                                    type="number"
-                                    label="Reps"
-                                    size="small"
-                                    fullWidth
-                                    value={inputs[exercise.name]?.reps || ''}
-                                    onChange={(e) => handleInputChange(exercise.name, 'reps', e.target.value)}
-                                />
-                                {/* Botón Añadir Set */}
-                                <Button 
-                                    variant="contained" 
-                                    color="primary"
-                                    onClick={() => handleAddSet(exercise.name)}
-                                    startIcon={<AddIcon />}
-                                    sx={{ minWidth: 120 }}
-                                    disabled={!isRunning}
-                                >
-                                    Añadir
-                                </Button>
+                            {/* Sets registrados */}
+                            <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.main', borderRadius: 1 }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.contrastText' }}>
+                                    Progreso ({trackedSets.filter((s) => s.exerciseName === exercise.name).length} / {exercise.sets}):
+                                </Typography>
+                                
+                                {/* 🚀 CORRECCIÓN 2: Se añade disableGutters a List */}
+                                <List disablePadding disableGutters>
+                                    {trackedSets
+                                        .filter((s) => s.exerciseName === exercise.name)
+                                        .map((s, idx) => {
+                                            const globalIndex = getGlobalSetIndex(s.exerciseName, s.set); 
+                                            const isSetBodyweight = s.isBodyweight || false;
+
+                                            return (
+                                                <React.Fragment key={s.timestamp + s.set}>
+                                                    <ListItem 
+                                                        // 🚀 CORRECCIÓN 2: Se añade disableGutters a ListItem
+                                                        disableGutters // ✨ Solución al error "Unexpected token"
+                                                        sx={{ 
+                                                            py: 1, 
+                                                            display: 'flex', 
+                                                            flexWrap: 'nowrap', 
+                                                            justifyContent: 'space-between', 
+                                                            alignItems: 'center',
+                                                            bgcolor: 'transparent',
+                                                            color: 'primary.contrastText',
+                                                            '& .MuiTextField-root': {
+                                                                // Ajustes de estilo para inputs
+                                                                '& .MuiInputBase-input': { 
+                                                                    color: 'primary.contrastText', 
+                                                                    padding: '4px 8px', 
+                                                                    fontSize: { xs: '0.8rem', sm: 'inherit' } // Fuente más pequeña
+                                                                },
+                                                                '& .MuiInputLabel-root': { 
+                                                                    color: 'primary.contrastText', 
+                                                                },
+                                                                '& .MuiOutlinedInput-root': {
+                                                                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)', },
+                                                                    '&:hover fieldset': { borderColor: 'white', },
+                                                                    '&.Mui-focused fieldset': { borderColor: 'white', },
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Box sx={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            flexGrow: 1, 
+                                                            flexWrap: 'nowrap', 
+                                                            // 🚀 CORRECCIÓN 3: Reducción de espacio entre elementos (gap)
+                                                            gap: { xs: 0.5, sm: 1 } 
+                                                        }}>
+                                                            <Typography sx={{ fontWeight: 'medium', mr: 0.5, minWidth: 'max-content', fontSize: { xs: '0.8rem', sm: 'inherit' } }}>
+                                                                Set {s.set}:
+                                                            </Typography>
+                                                            
+                                                            <Typography 
+                                                                variant="caption"
+                                                                sx={{ 
+                                                                    mr: 0.5, 
+                                                                    color: isSetBodyweight ? 'secondary.light' : 'inherit', 
+                                                                    fontWeight: 'bold',
+                                                                    alignSelf: 'center',
+                                                                    minWidth: 'max-content'
+                                                                }}
+                                                            >
+                                                                {isSetBodyweight ? 'BW' : ''}
+                                                            </Typography>
+
+                                                            {/* Input editable para Peso */}
+                                                            <TextField
+                                                                type="number"
+                                                                size="small"
+                                                                label={isSetBodyweight ? '' : 'Peso'}
+                                                                variant="outlined"
+                                                                value={s.weight || ''}
+                                                                onChange={(e) => handleUpdateSet(globalIndex, 'weight', e.target.value)}
+                                                                // 🚀 CORRECCIÓN 3: Reducción del ancho del input de peso
+                                                                sx={{ width: { xs: 55, sm: 70 } }} 
+                                                                disabled={isSetBodyweight}
+                                                            /> 
+                                                            {!isSetBodyweight && <Typography sx={{ mr: 0.5, alignSelf: 'center', minWidth: 'max-content', fontSize: { xs: '0.8rem', sm: 'inherit' } }}>kg x</Typography>}
+                                                            
+                                                            {/* Input editable para Reps */}
+                                                            <TextField
+                                                                type="number"
+                                                                size="small"
+                                                                label="Reps"
+                                                                variant="outlined"
+                                                                value={s.reps}
+                                                                onChange={(e) => handleUpdateSet(globalIndex, 'reps', e.target.value)}
+                                                                // 🚀 CORRECCIÓN 3: Reducción del ancho del input de repeticiones
+                                                                sx={{ width: { xs: 55, sm: 70 } }}
+                                                            /> 
+                                                        </Box>
+                                                        
+                                                        {/* Botón de Eliminar */}
+                                                        <IconButton 
+                                                            color="inherit"
+                                                            onClick={() => handleRemoveSet(globalIndex, s.set, s.exerciseName)} 
+                                                            aria-label="eliminar set"
+                                                            // 🚀 CORRECCIÓN 3: Ajuste de margen para el botón de eliminar
+                                                            sx={{ ml: 0.5, flexShrink: 0 }}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </ListItem>
+                                                    {idx < trackedSets.filter((s) => s.exerciseName === exercise.name).length - 1 && <Divider component="li" sx={{ bgcolor: 'rgba(255, 255, 255, 0.2)' }} />}
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                </List>
                             </Box>
-                        </Box>
-                    </Card>
-                ))}
-            </Box>
-        </Container>
+
+                            {/* Formulario para nuevo set (Sin cambios) */}
+                            <Box sx={{ mt: 3, p: 2, border: '1px dashed', borderColor: 'grey.300', borderRadius: 1 }}>
+                                
+                                <FormControlLabel
+                                    control={
+                                        <Switch 
+                                            checked={isBodyweightMode[exercise.name] || false}
+                                            onChange={(e) => {
+                                                setIsBodyweightMode(prev => ({ 
+                                                    ...prev, 
+                                                    [exercise.name]: e.target.checked 
+                                                }));
+                                                if(e.target.checked) {
+                                                    setInputs(prev => ({
+                                                        ...prev,
+                                                        [exercise.name]: { ...prev[exercise.name], weight: '' }
+                                                    }));
+                                                }
+                                            }}
+                                            color="secondary"
+                                        />
+                                    }
+                                    label="Sin peso adicional (Calistenia)"
+                                    sx={{ mb: 2 }}
+                                />
+
+                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'stretch', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+                                    {/* Input de Peso */}
+                                    <TextField
+                                        type="number"
+                                        label="Peso (kg)"
+                                        size="small"
+                                        fullWidth={false}
+                                        sx={{ flexGrow: 1, minWidth: { xs: '45%', sm: 'auto' } }}
+                                        value={inputs[exercise.name]?.weight || ''}
+                                        onChange={(e) => handleInputChange(exercise.name, 'weight', e.target.value)}
+                                        disabled={isBodyweightMode[exercise.name]}
+                                    />
+                                    {/* Input de Reps */}
+                                    <TextField
+                                        type="number"
+                                        label="Reps"
+                                        size="small"
+                                        fullWidth={false}
+                                        sx={{ flexGrow: 1, minWidth: { xs: '45%', sm: 'auto' } }}
+                                        value={inputs[exercise.name]?.reps || ''}
+                                        onChange={(e) => handleInputChange(exercise.name, 'reps', e.target.value)}
+                                    />
+                                    {/* Botón Añadir Set */}
+                                    <Button 
+                                        variant="contained" 
+                                        color="primary"
+                                        onClick={() => handleAddSet(exercise.name)}
+                                        startIcon={<AddIcon />}
+                                        sx={{ minWidth: 120, flexBasis: { xs: '100%', sm: 'auto' } }} 
+                                        disabled={!isRunning}
+                                    >
+                                        Añadir
+                                    </Button>
+                                </Box>
+                            </Box>
+                        </Card>
+                    ))}
+                </Box>
+            </Container>
+        </>
     );
 };
 

@@ -4,23 +4,42 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Box, Typography, useTheme } from '@mui/material';
 
 // Los colores son importantes para diferenciar las líneas.
-// Mantenemos los colores definidos, pero podrías mapearlos a la paleta de MUI si fuera necesario
 const colors = ['#007AFF', '#FF9500', '#5856D6', '#34C759', '#FF2D55', '#AF52DE', '#5AC8FA'];
 
 // =========================================================================
-// Función de Tooltip Personalizado para MUI
+// Función de Tooltip Personalizado para MUI (MEJORADA)
 // =========================================================================
-const CustomTooltip = ({ active, payload, label, yAxisLabel, theme }) => {
+// Añadimos 'chartMetric' a las props para un formato preciso
+const CustomTooltip = ({ active, payload, label, chartMetric, theme }) => {
     if (active && payload && payload.length) {
+        
+        // Función para determinar la unidad y el formato
+        const formatValue = (value, metric) => {
+            const numValue = typeof value === 'number' ? value : 0;
+
+            if (metric.includes('volume')) {
+                // Volumen: Formateo con separador de miles y 'kg'
+                return `${numValue.toLocaleString('es-ES')} kg`;
+            } else if (metric.includes('duration')) {
+                // Duración: Formateo con un decimal y 'min'
+                return `${numValue.toFixed(1)} min`;
+            } else if (metric.includes('reps')) {
+                // Repeticiones: Formateo entero y 'reps'
+                return `${Math.round(numValue).toLocaleString('es-ES')} reps`;
+            }
+            return numValue.toLocaleString(); // Por defecto, solo número
+        };
+
         return (
             <Box 
                 sx={{ 
                     p: 1.5, 
+                    // Adaptación al tema claro/oscuro
                     backgroundColor: theme.palette.mode === 'dark' ? 'rgba(30, 40, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                     border: '1px solid',
                     borderColor: theme.palette.primary.main, 
                     borderRadius: '8px', 
-                    color: theme.palette.mode === 'dark' ? 'white' : 'black',
+                    color: theme.palette.text.primary,
                     boxShadow: 6
                 }}
             >
@@ -28,10 +47,7 @@ const CustomTooltip = ({ active, payload, label, yAxisLabel, theme }) => {
                     {label}
                 </Typography>
                 {payload.map((item, index) => {
-                    // Formateo similar al del Eje Y
-                    const formattedValue = yAxisLabel.includes('Volumen') 
-                        ? item.value.toLocaleString() + ' kg' 
-                        : item.value.toFixed(1) + ' kg';
+                    const formattedValue = formatValue(item.value, chartMetric);
                         
                     return (
                         <Typography 
@@ -39,7 +55,7 @@ const CustomTooltip = ({ active, payload, label, yAxisLabel, theme }) => {
                             variant="body2"
                             sx={{ color: item.color }}
                         >
-                            {item.name}: **{formattedValue}**
+                            {item.dataKey}: **{formattedValue}**
                         </Typography>
                     );
                 })}
@@ -77,7 +93,8 @@ const ProgressChart = ({ data, exerciseNames, yAxisLabel, chartMetric }) => {
     
     // Función de formato de Tooltip (ahora solo envuelve el componente CustomTooltip)
     const renderCustomTooltip = (props) => (
-        <CustomTooltip {...props} yAxisLabel={yAxisLabel} theme={theme} />
+        // 🌟 PASAMOS chartMetric COMO PROP AL TOOLTIP
+        <CustomTooltip {...props} chartMetric={chartMetric} theme={theme} />
     );
 
     return (
@@ -96,7 +113,7 @@ const ProgressChart = ({ data, exerciseNames, yAxisLabel, chartMetric }) => {
                 {/* Eje X (Mes/Año) */}
                 <XAxis 
                     dataKey="monthYear" 
-                    stroke={theme.palette.text.secondary} // Color de texto
+                    stroke={theme.palette.text.secondary} 
                     angle={-30} 
                     textAnchor="end" 
                     height={50}
@@ -105,7 +122,7 @@ const ProgressChart = ({ data, exerciseNames, yAxisLabel, chartMetric }) => {
                 
                 {/* Eje Y (Métrica Dinámica) */}
                 <YAxis 
-                    stroke={theme.palette.text.primary} // Color de texto
+                    stroke={theme.palette.text.primary} 
                     label={{ 
                         value: yAxisLabel, 
                         angle: -90, 
@@ -113,10 +130,17 @@ const ProgressChart = ({ data, exerciseNames, yAxisLabel, chartMetric }) => {
                         fill: theme.palette.text.primary,
                         style: { fontWeight: 'bold', fontSize: '13px' }
                     }} 
-                    tickFormatter={(value) => (
-                        // Mantenemos la lógica de formato
-                        yAxisLabel.includes('Volumen') ? value.toLocaleString() : value.toFixed(1)
-                    )}
+                    tickFormatter={(value) => {
+                        // Formato del eje Y (igual que en el Tooltip pero sin unidad)
+                        if (chartMetric.includes('volume')) {
+                            return value.toLocaleString();
+                        } else if (chartMetric.includes('duration')) {
+                            return value.toFixed(1);
+                        } else if (chartMetric.includes('reps')) {
+                            return Math.round(value).toLocaleString();
+                        }
+                        return value.toLocaleString();
+                    }}
                     style={{ fontSize: '12px' }}
                 />
                 

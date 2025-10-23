@@ -74,7 +74,7 @@ function DashboardPage() {
 
     // Effects (Lógica Mantenida)
     useEffect(() => {
-      // ... fetchLogs logic ...
+        // ... fetchLogs logic ...
         const fetchLogs = async () => {
             try {
                 setLoadingLogs(true);
@@ -174,15 +174,23 @@ function DashboardPage() {
                     <Box 
                         sx={{ 
                             textAlign: 'left', 
-                            whiteSpace: 'pre-wrap', 
+                            whiteSpace: 'pre-wrap', // 🌟 SOLUCIÓN: Mantiene saltos de línea y formato del texto de la IA
                             lineHeight: '1.6',
                             p: 2,
                             borderRadius: '8px',
-                            bgcolor: 'background.default', // Usamos el negro profundo para el bloque de texto
+                            bgcolor: 'background.default', // Usamos el color de fondo para el bloque de texto
                             boxShadow: 1
                         }}
                     >
-                        {aiAnalysisText}
+                        {/* 🌟 Solución: Renderizamos el texto de la IA directamente en un Box con pre-wrap */}
+                        <Typography component="pre" sx={{ 
+                            fontFamily: 'Roboto, sans-serif', // Asegura una fuente legible
+                            whiteSpace: 'pre-wrap', 
+                            margin: 0, 
+                            color: 'text.primary' // Asegura que el texto sea visible en el fondo
+                        }}>
+                            {aiAnalysisText}
+                        </Typography>
                     </Box>
                 )}
             </Card>
@@ -197,7 +205,13 @@ function DashboardPage() {
                 </Box>
                 
                 {/* Controles de Filtro */}
-                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 3 }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    gap: 3, 
+                    mb: 3, 
+                    flexDirection: { xs: 'column', sm: 'row' } // Responsive: apila en móvil
+                }}>
                     
                     {/* Selector de Métrica */}
                     <FormControl variant="outlined" sx={{ minWidth: 150 }}>
@@ -277,6 +291,13 @@ function DashboardPage() {
                             {logs.map(log => {
                                 const minutes = Math.floor(log.duration_seconds / 60);
                                 const seconds = log.duration_seconds % 60;
+                                const formattedDate = new Date(log.created_at).toLocaleString('es-ES', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                });
 
                                 return (
                                     <Card 
@@ -296,7 +317,7 @@ function DashboardPage() {
                                             <strong>Duración:</strong> {minutes} min {seconds} seg
                                         </Typography>
                                         <Typography variant="body2">
-                                            <strong>Fecha:</strong> {new Date(log.created_at).toLocaleString()}
+                                            <strong>Fecha:</strong> {formattedDate}
                                         </Typography>
                                     </Card>
                                 );

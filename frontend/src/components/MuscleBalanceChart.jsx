@@ -6,13 +6,20 @@ import { Box, Typography, Alert, Paper, useTheme } from '@mui/material';
 // Función de color que usabas (manteniendo el gradiente)
 const getBarColor = (volume, maxVolume) => {
     if (volume === 0 || !volume) return '#e0e0e0';
-    const normalizedVolume = Math.min(1, volume / maxVolume); 
+    // Se asegura que normalizedVolume no sea NaN si maxVolume es 0 o indefinido (aunque ya está cubierto)
+    const normalizedVolume = maxVolume > 0 ? Math.min(1, volume / maxVolume) : 0; 
     
-    // Gradiente de azul claro a azul oscuro
+    // Gradiente de azul claro (menos volumen) a azul oscuro (más volumen)
     const R = Math.round(150 - normalizedVolume * 50);
     const G = Math.round(200 - normalizedVolume * 50);
     const B = Math.round(255 - normalizedVolume * 30);
     return `rgb(${R},${G},${B})`; 
+};
+
+// Componente Customizado para la barra que aplica el color pre-calculado
+const CustomBar = (props) => {
+    const { x, y, width, height, fillColor } = props;
+    return <rect x={x} y={y} width={width} height={height} fill={fillColor} rx={10} ry={10} />;
 };
 
 /**
@@ -27,11 +34,19 @@ const MuscleBalanceChart = ({ data, title }) => {
     const otherVolume = data['Otros'] || 0;
     
     // 1. Convertir los datos a array, excluyendo 'Otros' y ceros
-    const chartData = Object.keys(data)
-        .filter(key => key !== 'Otros' && data[key] > 0)
+    const filteredData = Object.keys(data)
+        .filter(key => key !== 'Otros' && data[key] > 0);
+
+    // 2. Calcular el volumen máximo (solo de los grupos principales)
+    const maxVolume = Math.max(1, ...filteredData.map(key => data[key]));
+
+    // 3. Crear chartData con colores pre-calculados
+    const chartData = filteredData
         .map(key => ({
             name: key,
             volumen: data[key],
+            // 🌟 SOLUCIÓN: Calcular y asignar el color a cada elemento
+            fillColor: getBarColor(data[key], maxVolume) 
         }))
         .sort((a, b) => b.volumen - a.volumen); // Ordenar por volumen descendente
 
@@ -51,26 +66,22 @@ const MuscleBalanceChart = ({ data, title }) => {
         );
     }
     
-    // 2. Calcular el volumen máximo (solo de los grupos principales)
-    const maxVolume = Math.max(1, ...chartData.map(item => item.volumen));
-    
-    // 3. Altura dinámica y color
+    // 4. Altura dinámica
     const chartHeight = Math.max(300, chartData.length * 40 + 60); 
-    // Usamos el color de Recharts para todas las barras (se podría refactorizar para usar MUI primary.main)
-    const primaryColor = getBarColor(maxVolume, maxVolume);
+    
+    // Título opcional, si no se proporciona, no se muestra
+    const chartTitle = title || "Volumen por Grupo Muscular";
 
     return (
         <Box sx={{ p: 2 }}>
             <Typography variant="h5" component="h3" align="center" sx={{ mb: 2, color: 'text.primary', fontWeight: 'bold' }}>
-                {title}
+                {chartTitle}
             </Typography>
             
             <ResponsiveContainer width="100%" height={chartHeight}>
                 <BarChart 
                     data={chartData} 
                     layout="vertical"
-                    // Ajustamos los márgenes usando el Box de MUI o sx si fuera necesario, 
-                    // pero aquí lo dejamos en Recharts para un control preciso del gráfico.
                     margin={{ top: 5, right: 30, left: 90, bottom: 5 }}
                 >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
@@ -79,7 +90,7 @@ const MuscleBalanceChart = ({ data, title }) => {
                     <YAxis 
                         dataKey="name" 
                         type="category" 
-                        stroke={theme.palette.text.secondary} // Color de texto secundario
+                        stroke={theme.palette.text.secondary} 
                         tickLine={false} 
                         axisLine={false}
                         width={80} 
@@ -105,12 +116,11 @@ const MuscleBalanceChart = ({ data, title }) => {
                         labelFormatter={(label) => label} 
                     />
                     
-                    {/* Barras */}
+                    {/* Barras: Usamos CustomBar para obtener el color dinámico por barra */}
                     <Bar 
                         dataKey="volumen" 
                         name="Volumen (kg)" 
-                        fill={primaryColor} // Usamos el color dinámico que calculaste
-                        radius={[10, 10, 10, 10]}
+                        shape={<CustomBar />} // 🌟 Usamos el componente CustomBar
                         barSize={30} 
                     />
                 </BarChart>

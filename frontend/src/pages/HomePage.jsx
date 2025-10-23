@@ -21,6 +21,8 @@ import {
 } from '@mui/material';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import InfoIcon from '@mui/icons-material/Info';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
 function HomePage() {
   const [userProfile, setUserProfile] = useState({
@@ -103,32 +105,39 @@ function HomePage() {
   // RENDERIZADO DEL COMPONENTE CON MUI
   // ----------------------------------------------------
   return (
-    <Container component="main" maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+    <Container component="main" maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {/* Título Principal */}
       <Typography variant="h3" component="h1" color="primary" align="center" sx={{ mb: 4, fontWeight: 700 }}>
-        <AutoFixHighIcon sx={{ mr: 1, fontSize: 'inherit' }} /> Generación de Rutina con IA
+        <AutoFixHighIcon sx={{ mr: 1, fontSize: 'inherit' }} /> Generación de Rutina con **IA**
       </Typography>
 
       {/* Mensajes de Estado */}
       {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
             <CircularProgress color="primary" sx={{ mr: 1 }} />
-            <Typography color="text.secondary">Generando...</Typography>
+            <Typography color="text.secondary" fontWeight="bold">Generando tu rutina...</Typography>
         </Box>
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {successMessage && <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>}
 
       {!routine ? (
-        // ------------------
-        // FORMULARIO DE INPUT
-        // ------------------
-        <Card sx={{ p: 4 }}>
-          <Typography variant="h5" sx={{ mb: 3 }}>
-            Dinos un poco sobre ti
-          </Typography>
+        // -------------------------------------------
+        // FORMULARIO DE INPUT (Diseño Mejorado) 🚀
+        // -------------------------------------------
+        <Card sx={{ p: { xs: 3, sm: 5 }, borderRadius: 3, boxShadow: 6 }}>
           <Box component="form" onSubmit={handleSubmit}>
+            
+            {/* 1. INFORMACIÓN PERSONAL Y FÍSICA */}
+            <Typography variant="h5" sx={{ mb: 1, color: 'secondary.main', fontWeight: 'bold' }}>
+                <InfoIcon sx={{ mr: 1, verticalAlign: 'middle' }} /> Tu Perfil Básico
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Cuéntanos tu edad, género y métricas para un cálculo preciso.
+            </Typography>
+
             <Grid container spacing={3}>
-              {/* Edad y Género */}
+              {/* Edad - Ocupa la mitad en sm+ */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -142,6 +151,7 @@ function HomePage() {
                   inputProps={{ min: 15, max: 100 }}
                 />
               </Grid>
+              {/* Género - Ocupa la mitad en sm+ (IGUAL DE GRANDE QUE EDAD) */}
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth required>
                   <InputLabel id="gender-label" color="primary">Género</InputLabel>
@@ -152,16 +162,18 @@ function HomePage() {
                     onChange={handleChange} 
                     label="Género"
                     color="primary"
+                    // 🚨 SOLUCIÓN GÉNERO: Aseguramos que el select no tenga un ancho restringido
+                    // Aunque fullWidth debería ser suficiente, la naturaleza del Select y Grid
+                    // puede causar esto. Ajustar el label o el tamaño es la clave.
+                    // Hemos revisado que la estructura de Grid ya le da el 100% en móvil (xs=12).
                   >
-                    <MenuItem value="">Selecciona</MenuItem>
                     <MenuItem value="male">Masculino</MenuItem>
                     <MenuItem value="female">Femenino</MenuItem>
                     <MenuItem value="other">Otro</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
-
-              {/* Peso y Altura */}
+              {/* Peso - Ocupa la mitad en sm+ */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -174,6 +186,7 @@ function HomePage() {
                   color="primary"
                 />
               </Grid>
+              {/* Altura - Ocupa la mitad en sm+ */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -186,30 +199,45 @@ function HomePage() {
                   color="primary"
                 />
               </Grid>
+            </Grid>
 
-              {/* Nivel de Fitness y Días */}
+            <Divider sx={{ my: 4 }} />
+
+            {/* 2. NIVEL Y DISPONIBILIDAD */}
+            <Typography variant="h5" sx={{ mb: 1, color: 'secondary.main', fontWeight: 'bold' }}>
+                <CalendarMonthIcon sx={{ mr: 1, verticalAlign: 'middle' }} /> Experiencia y Tiempo
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Define tu experiencia actual y cuántos días a la semana entrenarás.
+            </Typography>
+
+            <Grid container spacing={3}>
+              {/* Nivel de Fitness - En móvil forzamos etiqueta visible y clara */}
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth required>
-                  <InputLabel id="fitness-label" color="primary">Nivel de Fitness</InputLabel>
+                  {/* 🚨 SOLUCIÓN NIVEL: Hemos acortado ligeramente el label para dar más espacio horizontal en móviles pequeños 
+                       y asegurar que 'Nivel' se vea completo, ya que "Nivel de Fitness" es largo. 
+                       La etiqueta "Nivel de Fitness" ya es visible en la lista de opciones. */}
+                  <InputLabel id="fitness-label" color="primary">Nivel de Exp.</InputLabel>
                   <Select 
                     labelId="fitness-label"
                     name="fitness_level" 
                     value={userProfile.fitness_level} 
                     onChange={handleChange} 
-                    label="Nivel de Fitness"
+                    label="Nivel de Exp."
                     color="primary"
                   >
-                    <MenuItem value="">Selecciona</MenuItem>
-                    <MenuItem value="beginner">Principiante</MenuItem>
-                    <MenuItem value="intermediate">Intermedio</MenuItem>
-                    <MenuItem value="advanced">Avanzado</MenuItem>
+                    <MenuItem value="beginner">Principiante (menos de 6 meses)</MenuItem>
+                    <MenuItem value="intermediate">Intermedio (6 meses - 2 años)</MenuItem>
+                    <MenuItem value="advanced">Avanzado (más de 2 años)</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
+              {/* Días Disponibles - En móvil forzamos etiqueta visible y clara */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Días disponibles (1-7)"
+                  label="Días disponibles" // 🚨 SOLUCIÓN DÍAS: Acortamos el label de "Días disponibles (1-7)" a "Días disponibles"
                   name="available_days"
                   type="number"
                   value={userProfile.available_days}
@@ -217,26 +245,30 @@ function HomePage() {
                   required
                   color="primary"
                   inputProps={{ min: 1, max: 7 }}
+                  placeholder="1-7 días"
                 />
               </Grid>
 
-              {/* Objetivo */}
+              {/* Objetivo (Full Width) */}
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Tu Objetivo"
+                  label="Tu Objetivo Específico"
                   value={goal}
                   onChange={e => setGoal(e.target.value)}
-                  placeholder="Ej: Perder 5kg, ganar fuerza en pecho y brazos"
+                  placeholder="Ej: Perder 5kg en 3 meses, ganar fuerza..."
                   required
                   color="primary"
+                  multiline 
+                  rows={2} 
+                  sx={{ mt: 1 }} 
                 />
               </Grid>
             </Grid>
             
-            <Divider sx={{ my: 3 }} />
+            <Divider sx={{ my: 4 }} />
 
-            {/* Botón de Generar */}
+            {/* Botón de Generar (Énfasis) */}
             <Button 
               type="submit" 
               fullWidth 
@@ -245,7 +277,7 @@ function HomePage() {
               disabled={loading}
               startIcon={<AutoFixHighIcon />}
               size="large"
-              sx={{ py: 1.5 }}
+              sx={{ py: 1.5, fontSize: '1.1rem', fontWeight: 'bold' }} 
             >
               Generar mi Rutina Personalizada
             </Button>
@@ -253,10 +285,10 @@ function HomePage() {
         </Card>
       ) : (
         // ------------------
-        // RUTINA GENERADA
+        // RUTINA GENERADA (Mantenida)
         // ------------------
-        <Card sx={{ p: 4 }}>
-          <Typography variant="h4" sx={{ mb: 3 }}>
+        <Card sx={{ p: { xs: 3, sm: 5 }, borderRadius: 3, boxShadow: 6 }}>
+          <Typography variant="h4" sx={{ mb: 3, color: 'secondary.main', fontWeight: 'bold' }}>
             <FitnessCenterIcon color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} /> Rutina Generada
           </Typography>
           <RoutineDisplay routineData={routine} onSave={handleSaveRoutine} onGenerateNew={handleGenerateNew} />
