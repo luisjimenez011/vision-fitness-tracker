@@ -6,7 +6,7 @@ import ProgressChart from '../components/ProgressChart.jsx';
 import TrainingCalendar from '../components/TrainingCalendar.jsx'; 
 import { Link } from 'react-router-dom';
 
-// ⬇️ IMPORTACIONES DE MUI
+
 import { 
     Box, 
     Typography, 
@@ -20,13 +20,15 @@ import {
     InputLabel,
     Divider
 } from '@mui/material';
+
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import InsightsIcon from '@mui/icons-material/Insights';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 
 
-// ** Función para transformar los datos (Lógica Mantenida)**
+// Función auxiliar para transformar los datos brutos de la API en el formato requerido por la gráfica.
+// Agrupa los datos por mes/año y crea una clave para cada ejercicio.
 const transformChartData = (data, metric) => {
     const transformedData = {};
     const exercises = new Set();
@@ -39,10 +41,12 @@ const transformChartData = (data, metric) => {
             transformedData[monthYear] = { monthYear }; 
         }
         
+        // Asigna el valor (Volumen o Peso Promedio) al ejercicio para ese mes
         transformedData[monthYear][exerciseName] = value; 
         exercises.add(exerciseName);
     });
     
+    // Devuelve los datos de la gráfica ordenados por fecha y la lista de nombres de ejercicios
     return { 
         chartData: Object.values(transformedData).sort((a, b) => a.monthYear.localeCompare(b.monthYear)),
         exerciseNames: Array.from(exercises)
@@ -54,27 +58,33 @@ function DashboardPage() {
     const auth = useAuth();
     const navigate = useNavigate();
     
-    // Estados existentes
+    // Estado para almacenar el historial de logs de entrenamiento
     const [logs, setLogs] = useState([]);
+    // Estado de carga para el historial de logs y el calendario
     const [loadingLogs, setLoadingLogs] = useState(true); 
+    // Estado de error para la carga de logs
     const [errorLogs, setErrorLogs] = useState(''); 
+    // Estado para el texto de análisis generado por la IA
     const [aiAnalysisText, setAiAnalysisText] = useState("Cargando análisis de rendimiento de IA...");
+    // Estado para los datos de volumen brutos usados en la gráfica
     const [rawVolumeData, setRawVolumeData] = useState([]); 
+    // Estado de carga para el análisis de la IA y el gráfico de progresión
     const [loadingAnalysis, setLoadingAnalysis] = useState(true);
-    const [timeRange, setTimeRange] = useState('180'); 
+    // Estado para el rango de tiempo seleccionado para el análisis (días)
+    const [timeRange, setTimeRange] = useState('180'); // Por defecto: 6 meses
+    // Estado para la métrica seleccionada en la gráfica (totalVolume o averageWeight)
     const [chartMetric, setChartMetric] = useState('totalVolume'); 
 
-    // Mapeo de filtros (Lógica Mantenida)
+    // Mapeo de valores de filtro de tiempo a días
     const timeRangeMap = {
         '90': 90, 
         '180': 180, 
         '365': 365, 
-        'all': 3650 
+        'all': 3650 // Uso de un número grande para simular 'todo el historial'
     };
 
-    // Effects (Lógica Mantenida)
+    // Efecto para cargar el historial de logs de entrenamiento (usado por el calendario)
     useEffect(() => {
-        // ... fetchLogs logic ...
         const fetchLogs = async () => {
             try {
                 setLoadingLogs(true);
@@ -91,12 +101,13 @@ function DashboardPage() {
         fetchLogs();
     }, []);
 
+    // Efecto para cargar los datos de progresión y el análisis de la IA (depende del rango de tiempo)
     useEffect(() => {
-        // ... fetchAnalysis logic ...
         const fetchAnalysis = async () => {
             try {
                 setLoadingAnalysis(true);
                 const days = timeRangeMap[timeRange];
+                // Endpoint para obtener datos de progresión de volumen y análisis de IA
                 const url = `/workout/progress/volume?daysBack=${days}`;
                 
                 const response = await apiClient.get(url);
@@ -115,20 +126,22 @@ function DashboardPage() {
         };
 
         fetchAnalysis();
-    }, [timeRange]); 
+    }, [timeRange]); // Se re-ejecuta cada vez que el rango de tiempo cambia
 
-    // Cálculos y Títulos (Lógica Mantenida)
+    // useMemo para procesar los datos brutos de la gráfica y definir títulos
+    // Se recalcula solo si cambian los datos brutos o la métrica seleccionada
     const { chartData, exerciseNames, chartTitle, yAxisLabel } = useMemo(() => {
         const { chartData, exerciseNames } = transformChartData(rawVolumeData, chartMetric);
         
         let title = '';
         let yLabel = '';
 
+        // Define el título y la etiqueta del eje Y basado en la métrica seleccionada
         if (chartMetric === 'totalVolume') {
-            title = 'Progresión de Volumen Total';
+            title = 'Progresión de Volumen Total por Ejercicio';
             yLabel = 'Volumen Total (kg)';
         } else {
-            title = 'Progresión de Peso Promedio';
+            title = 'Progresión de Peso Promedio por Ejercicio';
             yLabel = 'Peso Promedio (kg)';
         }
         
@@ -136,7 +149,7 @@ function DashboardPage() {
     }, [rawVolumeData, chartMetric]);
 
 
-    // Lógica de Renderizado con MUI
+    // Renderizado del componente DashboardPage
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             
@@ -144,7 +157,7 @@ function DashboardPage() {
                 Dashboard de Progresión
             </Typography>
 
-            {/* INTEGRACIÓN DEL CALENDARIO */}
+            {/* SECCIÓN DEL CALENDARIO DE ENTRENAMIENTO */}
             <Card sx={{ p: 3, mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <CalendarTodayIcon color="primary" sx={{ mr: 1 }} />
@@ -152,11 +165,11 @@ function DashboardPage() {
                         Mi Consistencia
                     </Typography>
                 </Box>
-                {/* Asumiendo que TrainingCalendar ya es responsive o se ajusta bien */}
+                {/* Componente que muestra los días de entrenamiento */}
                 <TrainingCalendar logs={logs} loading={loadingLogs} />
             </Card>
 
-            {/* PANEL DE ANÁLISIS DE IA */}
+            {/* SECCIÓN DE ANÁLISIS DE RENDIMIENTO DE LA IA */}
             <Card sx={{ p: 3, mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <PsychologyIcon color="primary" sx={{ mr: 1 }} />
@@ -165,6 +178,7 @@ function DashboardPage() {
                     </Typography>
                 </Box>
                 
+                {/* Muestra el estado de carga o el texto del análisis */}
                 {loadingAnalysis ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
                         <CircularProgress size={20} color="primary" sx={{ mr: 1 }} />
@@ -174,20 +188,20 @@ function DashboardPage() {
                     <Box 
                         sx={{ 
                             textAlign: 'left', 
-                            whiteSpace: 'pre-wrap', // 🌟 SOLUCIÓN: Mantiene saltos de línea y formato del texto de la IA
+                            whiteSpace: 'pre-wrap', // Mantiene los saltos de línea y el formato del texto de la IA
                             lineHeight: '1.6',
                             p: 2,
                             borderRadius: '8px',
-                            bgcolor: 'background.default', // Usamos el color de fondo para el bloque de texto
+                            bgcolor: 'background.default',
                             boxShadow: 1
                         }}
                     >
-                        {/* 🌟 Solución: Renderizamos el texto de la IA directamente en un Box con pre-wrap */}
+                        {/* Se usa el componente 'pre' de Typography para mantener el formato del texto de la IA */}
                         <Typography component="pre" sx={{ 
-                            fontFamily: 'Roboto, sans-serif', // Asegura una fuente legible
+                            fontFamily: 'Roboto, sans-serif', 
                             whiteSpace: 'pre-wrap', 
                             margin: 0, 
-                            color: 'text.primary' // Asegura que el texto sea visible en el fondo
+                            color: 'text.primary' 
                         }}>
                             {aiAnalysisText}
                         </Typography>
@@ -195,7 +209,7 @@ function DashboardPage() {
                 )}
             </Card>
             
-            {/* GRÁFICO DE PROGRESO DINÁMICO */}
+            {/* SECCIÓN DEL GRÁFICO DE PROGRESO DINÁMICO */}
             <Card sx={{ p: 3, mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                     <InsightsIcon color="primary" sx={{ mr: 1 }} />
@@ -204,13 +218,13 @@ function DashboardPage() {
                     </Typography>
                 </Box>
                 
-                {/* Controles de Filtro */}
+                {/* Controles de Filtro para Métrica y Rango de Tiempo */}
                 <Box sx={{ 
                     display: 'flex', 
                     justifyContent: 'center', 
                     gap: 3, 
                     mb: 3, 
-                    flexDirection: { xs: 'column', sm: 'row' } // Responsive: apila en móvil
+                    flexDirection: { xs: 'column', sm: 'row' }
                 }}>
                     
                     {/* Selector de Métrica */}
@@ -246,7 +260,7 @@ function DashboardPage() {
                     </FormControl>
                 </Box>
                 
-                {/* Renderizado del Gráfico */}
+                {/* Renderizado del Gráfico o indicador de carga */}
                 {loadingAnalysis ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                         <CircularProgress color="primary" />
@@ -263,7 +277,7 @@ function DashboardPage() {
             
             <Divider sx={{ my: 4 }} /> 
 
-            {/* HISTORIAL DE ENTRENAMIENTOS */}
+            {/* SECCIÓN DE HISTORIAL DE ENTRENAMIENTOS RECIENTES */}
             <Box sx={{ mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                     <FitnessCenterIcon color="primary" sx={{ mr: 1 }} />
@@ -272,6 +286,7 @@ function DashboardPage() {
                     </Typography>
                 </Box>
                 
+                {/* Indicador de carga para los logs */}
                 {loadingLogs && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                         <CircularProgress color="primary" size={20} sx={{ mr: 1 }} />
@@ -279,8 +294,10 @@ function DashboardPage() {
                     </Box>
                 )}
                 
+                {/* Indicador de error */}
                 {errorLogs && <Alert severity="error">{errorLogs}</Alert>}
                 
+                {/* Muestra la lista de logs o un mensaje si no hay */}
                 {!loadingLogs && !errorLogs && (
                     logs.length === 0 ? (
                         <Typography variant="body1" align="center" sx={{ color: 'text.secondary', mt: 2 }}>
@@ -289,8 +306,11 @@ function DashboardPage() {
                     ) : (
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                             {logs.map(log => {
+                                // Cálculo de minutos y segundos de la duración
                                 const minutes = Math.floor(log.duration_seconds / 60);
                                 const seconds = log.duration_seconds % 60;
+                                
+                                // Formateo de la fecha para mostrar
                                 const formattedDate = new Date(log.created_at).toLocaleString('es-ES', {
                                     year: 'numeric',
                                     month: 'long',

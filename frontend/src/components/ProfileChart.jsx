@@ -3,11 +3,10 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, 
     Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-// ⬇️ Importaciones de MUI
 import { Box, Typography, useTheme } from '@mui/material';
 
 // =========================================================================
-// DEFINICIÓN DE MÉTRICAS (MANTENIDA)
+// DEFINICIÓN DE MÉTRICAS
 // =========================================================================
 const METRIC_DETAILS = {
     // Métricas principales (seleccionables por el usuario)
@@ -21,31 +20,29 @@ const METRIC_DETAILS = {
 
 /**
  * Componente de gráfico de línea para la progresión global mensual.
+ * Muestra una métrica principal seleccionada y la métrica fija de entrenamientos.
+ * @param {object[]} props.data - Datos de progresión mensual.
+ * @param {string} props.selectedMetric - Clave de la métrica principal a mostrar.
  */
 const ProfileChart = ({ data, selectedMetric }) => {
-    const theme = useTheme(); // Para acceder a los colores del tema de MUI
+    const theme = useTheme(); 
     const mainMetric = METRIC_DETAILS[selectedMetric];
 
     // =========================================================================
-    // Función de Tooltip Personalizado (MOVIDA Y MEJORADA PARA USAR EL TEMA)
+    // Componente Tooltip Personalizado
     // =========================================================================
-    // Definimos el componente Tooltip dentro de ProfileChart para acceder a `theme`.
-    // Aunque no podemos usar el hook `useTheme` directamente dentro de un componente 
-    // renderizado por Recharts, podemos pasar el objeto `theme` como prop o usar 
-    // los valores directamente en el estilo. Aquí mejoramos el estilo para usar 
-    // colores del tema (fondo/texto) en lugar de valores fijos oscuros.
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             return (
                 <Box 
                     sx={{ 
-                        // Colores adaptables al tema (claro/oscuro)
+                        // Estilo del Tooltip adaptable al tema (claro/oscuro)
                         p: 1.5, 
                         backgroundColor: theme.palette.background.paper, 
                         border: '1px solid',
                         borderColor: theme.palette.primary.main, 
                         borderRadius: '8px', 
-                        color: theme.palette.text.primary, // Texto primario del tema
+                        color: theme.palette.text.primary, 
                         fontSize: '14px',
                         boxShadow: 6
                     }}
@@ -55,7 +52,6 @@ const ProfileChart = ({ data, selectedMetric }) => {
                     </Typography>
                     {payload.map((item, index) => {
                         const detail = METRIC_DETAILS[item.dataKey];
-                        // Aseguramos que el valor sea un número para el toLocaleString
                         const value = typeof item.value === 'number' ? item.value : 0;
                         const unit = detail ? detail.unit : '';
                         
@@ -76,7 +72,7 @@ const ProfileChart = ({ data, selectedMetric }) => {
         return null;
     };
     // =========================================================================
-    // FIN DEL TOOLTIP
+    // Fin del Tooltip
     // =========================================================================
 
 
@@ -90,7 +86,7 @@ const ProfileChart = ({ data, selectedMetric }) => {
                     {/* Grilla: Color adaptable al tema */}
                     <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
                     
-                    {/* Eje X (Mes/Año) */}
+                    {/* Eje X (Etiquetas de Mes/Año) */}
                     <XAxis 
                         dataKey="month" 
                         stroke={theme.palette.text.primary} 
@@ -100,7 +96,7 @@ const ProfileChart = ({ data, selectedMetric }) => {
                         style={{ fontSize: '12px' }}
                     />
                     
-                    {/* Eje Y PRINCIPAL (Dinámico) */}
+                    {/* Eje Y PRINCIPAL: Asignado a la métrica seleccionada */}
                     <YAxis 
                         yAxisId="main" 
                         stroke={mainMetric.color}
@@ -114,7 +110,7 @@ const ProfileChart = ({ data, selectedMetric }) => {
                         }} 
                     />
                     
-                    {/* Eje Y SECUNDARIO (Fijo: Entrenamientos) */}
+                    {/* Eje Y SECUNDARIO: Asignado a la métrica de 'totalWorkouts' */}
                     <YAxis 
                         yAxisId="secondary" 
                         orientation="right" 
@@ -129,7 +125,7 @@ const ProfileChart = ({ data, selectedMetric }) => {
                         }} 
                     />
                     
-                    {/* Tooltip: Usa el componente CustomTooltip definido arriba */}
+                    {/* Tooltip: Utiliza el componente personalizado para estilos de MUI */}
                     <Tooltip content={<CustomTooltip />} />
                     
                     {/* Leyenda: Estilo adaptable al tema */}
@@ -138,11 +134,10 @@ const ProfileChart = ({ data, selectedMetric }) => {
                     {/* RENDERIZADO DINÁMICO DE LÍNEAS */}
                     {Object.keys(METRIC_DETAILS).map(key => {
                         const detail = METRIC_DETAILS[key];
-                        
                         const isMainMetric = key === selectedMetric;
                         const isSecondaryMetric = key === 'totalWorkouts';
                         
-                        // Solo renderizamos la métrica seleccionada y la de entrenamientos
+                        // Solo renderiza la métrica seleccionada y la métrica secundaria fija
                         if (!isMainMetric && !isSecondaryMetric) {
                             return null;
                         }
@@ -155,6 +150,7 @@ const ProfileChart = ({ data, selectedMetric }) => {
                                 dataKey={key} 
                                 name={`${detail.name} ${detail.unit ? `(${detail.unit})` : ''}`}
                                 stroke={detail.color} 
+                                // Diferencia la línea principal de la secundaria con grosor y puntos
                                 strokeWidth={isMainMetric ? 4 : 2}
                                 dot={isMainMetric ? { r: 6 } : false}
                                 activeDot={{ r: 8 }} 

@@ -3,7 +3,7 @@ import apiClient from "../api/apiClient.js";
 import MuscleBalanceChart from "../components/MuscleBalanceChart.jsx";
 import ProfileChart from "../components/ProfileChart.jsx";
 
-// ⬇️ IMPORTACIONES DE MUI
+
 import { 
     Box, 
     Typography, 
@@ -20,7 +20,7 @@ import {
     FormControl, 
     InputLabel,
     Divider,
-    Paper, // Usaremos Paper para algunas secciones
+    Paper, 
 } from "@mui/material";
 // Importamos Skeleton para la optimización y UX de carga
 import Skeleton from "@mui/material/Skeleton"; 

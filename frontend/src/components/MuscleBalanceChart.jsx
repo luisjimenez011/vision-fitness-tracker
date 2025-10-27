@@ -1,12 +1,10 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-// ⬇️ Importaciones de MUI
-import { Box, Typography, Alert, Paper, useTheme } from '@mui/material';
+import { Box, Typography, Alert, useTheme } from '@mui/material';
 
-// Función de color que usabas (manteniendo el gradiente)
+// Función para calcular un color degradado basado en el volumen (de claro a oscuro)
 const getBarColor = (volume, maxVolume) => {
     if (volume === 0 || !volume) return '#e0e0e0';
-    // Se asegura que normalizedVolume no sea NaN si maxVolume es 0 o indefinido (aunque ya está cubierto)
     const normalizedVolume = maxVolume > 0 ? Math.min(1, volume / maxVolume) : 0; 
     
     // Gradiente de azul claro (menos volumen) a azul oscuro (más volumen)
@@ -16,41 +14,40 @@ const getBarColor = (volume, maxVolume) => {
     return `rgb(${R},${G},${B})`; 
 };
 
-// Componente Customizado para la barra que aplica el color pre-calculado
+// Componente personalizado de barra para aplicar el color pre-calculado
 const CustomBar = (props) => {
     const { x, y, width, height, fillColor } = props;
     return <rect x={x} y={y} width={width} height={height} fill={fillColor} rx={10} ry={10} />;
 };
 
 /**
- * Gráfico de barras horizontales para el balance muscular, usando MUI para el layout.
- * @param {Object} props.data - Objeto {GrupoMuscular: volumen}
+ * Gráfico de barras horizontales que visualiza el volumen total levantado 
+ * por cada grupo muscular principal.
+ * @param {Object} props.data - Objeto {GrupoMuscular: volumen_total_kg}
+ * @param {string} [props.title] - Título del gráfico.
  */
 const MuscleBalanceChart = ({ data, title }) => {
-    // Usar el tema de MUI para acceder a colores o fuentes
     const theme = useTheme();
 
-    // Extraer el volumen de "Otros" para tratarlo por separado
+    // Excluir el volumen de 'Otros' y los grupos con volumen cero
     const otherVolume = data['Otros'] || 0;
     
-    // 1. Convertir los datos a array, excluyendo 'Otros' y ceros
     const filteredData = Object.keys(data)
         .filter(key => key !== 'Otros' && data[key] > 0);
 
-    // 2. Calcular el volumen máximo (solo de los grupos principales)
+    // Calcular el volumen máximo para la escala de color
     const maxVolume = Math.max(1, ...filteredData.map(key => data[key]));
 
-    // 3. Crear chartData con colores pre-calculados
+    // Crear el array de datos para Recharts con el color ya asignado
     const chartData = filteredData
         .map(key => ({
             name: key,
             volumen: data[key],
-            // 🌟 SOLUCIÓN: Calcular y asignar el color a cada elemento
             fillColor: getBarColor(data[key], maxVolume) 
         }))
-        .sort((a, b) => b.volumen - a.volumen); // Ordenar por volumen descendente
+        .sort((a, b) => b.volumen - a.volumen); // Ordenar barras de mayor a menor volumen
 
-    // Si no hay datos relevantes para mostrar la gráfica...
+    // Mostrar alerta si no hay datos de volumen relevantes
     if (chartData.length === 0) {
         return (
             <Alert severity="info" sx={{ m: 2, textAlign: 'center' }}>
@@ -66,10 +63,8 @@ const MuscleBalanceChart = ({ data, title }) => {
         );
     }
     
-    // 4. Altura dinámica
+    // Altura dinámica basada en el número de barras
     const chartHeight = Math.max(300, chartData.length * 40 + 60); 
-    
-    // Título opcional, si no se proporciona, no se muestra
     const chartTitle = title || "Volumen por Grupo Muscular";
 
     return (
@@ -86,7 +81,7 @@ const MuscleBalanceChart = ({ data, title }) => {
                 >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.palette.divider} />
                     
-                    {/* Eje Y: Nombres de grupos musculares */}
+                    {/* Eje Y: Muestra los nombres de los grupos musculares */}
                     <YAxis 
                         dataKey="name" 
                         type="category" 
@@ -97,7 +92,7 @@ const MuscleBalanceChart = ({ data, title }) => {
                         style={{ fontSize: '12px' }}
                     />
                     
-                    {/* Eje X: Valores de volumen (Kg) */}
+                    {/* Eje X: Muestra la escala de volumen en kg */}
                     <XAxis 
                         type="number" 
                         stroke={theme.palette.text.secondary} 
@@ -106,7 +101,6 @@ const MuscleBalanceChart = ({ data, title }) => {
                         style={{ fontSize: '12px' }}
                     />
                     
-                    {/* Tooltip: Muestra el valor al pasar el ratón */}
                     <Tooltip 
                         contentStyle={{ 
                             backgroundColor: theme.palette.background.paper, 
@@ -116,17 +110,17 @@ const MuscleBalanceChart = ({ data, title }) => {
                         labelFormatter={(label) => label} 
                     />
                     
-                    {/* Barras: Usamos CustomBar para obtener el color dinámico por barra */}
+                    {/* Barras: Usa el componente CustomBar para aplicar el color dinámico */}
                     <Bar 
                         dataKey="volumen" 
                         name="Volumen (kg)" 
-                        shape={<CustomBar />} // 🌟 Usamos el componente CustomBar
+                        shape={<CustomBar />} 
                         barSize={30} 
                     />
                 </BarChart>
             </ResponsiveContainer>
 
-            {/* Mostrar el volumen 'Otros' debajo del gráfico */}
+            {/* Etiqueta para el volumen clasificado como 'Otros' */}
             {otherVolume > 0 && (
                 <Box sx={{ textAlign: 'right', mt: 1, pr: 3 }}>
                     <Typography variant="caption" color="text.secondary">

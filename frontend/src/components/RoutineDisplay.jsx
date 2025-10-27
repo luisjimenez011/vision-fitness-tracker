@@ -8,18 +8,18 @@ import {
     Grid,
     Divider,
     useTheme,
-    Stack // ⭐️ IMPORTACIÓN AÑADIDA
+    Stack
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save'; 
 import RefreshIcon from '@mui/icons-material/Refresh'; 
 
 // =========================================================================
-// 1. DEFINICIÓN DEL SUBCOMPONENTE ExerciseRow 
-// (Este ya es responsivo internamente gracias a Grid item xs={6})
+// 1. DEFINICIÓN DEL SUBCOMPONENTE ExerciseRow
 // =========================================================================
 
 /**
- * Fila editable para un solo ejercicio.
+ * Fila editable para un solo ejercicio dentro de un día de entrenamiento.
+ * Utiliza React.memo para optimizar la re-renderización.
  */
 const ExerciseRow = React.memo(({ exercise, dayIndex, exerciseIndex, handleExerciseChange }) => {
     const theme = useTheme();
@@ -33,7 +33,7 @@ const ExerciseRow = React.memo(({ exercise, dayIndex, exerciseIndex, handleExerc
                 bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' 
             }}
         >
-            {/* Nombre del Ejercicio */}
+            {/* Campo para el Nombre del Ejercicio */}
             <TextField
                 label="Ejercicio"
                 variant="standard"
@@ -46,9 +46,9 @@ const ExerciseRow = React.memo(({ exercise, dayIndex, exerciseIndex, handleExerc
                 }}
             />
             
-            {/* ⭐️ RESPONSIVO: Sets y Reps se dividen 50/50 en cualquier pantalla (xs=6) ⭐️ */}
+            {/* Contenedor responsivo para Sets y Repeticiones */}
             <Grid container spacing={2} sx={{ mt: 1 }}>
-                {/* Sets */}
+                {/* Sets (ocupa la mitad del ancho) */}
                 <Grid item xs={6}>
                     <TextField
                         label="Sets"
@@ -59,7 +59,7 @@ const ExerciseRow = React.memo(({ exercise, dayIndex, exerciseIndex, handleExerc
                         onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'sets', e.target.value)}
                     />
                 </Grid>
-                {/* Reps */}
+                {/* Reps (ocupa la mitad del ancho) */}
                 <Grid item xs={6}>
                     <TextField
                         label="Repeticiones"
@@ -70,7 +70,7 @@ const ExerciseRow = React.memo(({ exercise, dayIndex, exerciseIndex, handleExerc
                         onChange={(e) => handleExerciseChange(dayIndex, exerciseIndex, 'reps', e.target.value)}
                     />
                 </Grid>
-                {/* Notas (Opcional) */}
+                {/* Notas (opcional, ocupa todo el ancho) */}
                 {exercise.notes !== undefined && (
                     <Grid item xs={12}>
                         <TextField
@@ -96,10 +96,17 @@ ExerciseRow.displayName = 'ExerciseRow';
 // 2. COMPONENTE PRINCIPAL: RoutineDisplay
 // =========================================================================
 
+/**
+ * Muestra y permite la edición de la rutina de entrenamiento.
+ * @param {object} props.routineData - Objeto de la rutina actual.
+ * @param {function} props.onSave - Callback al guardar la rutina.
+ * @param {function} props.onGenerateNew - Callback al generar una nueva rutina.
+ */
 const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
     const [editableRoutine, setEditableRoutine] = useState(routineData);
     const theme = useTheme();
 
+    // Sincroniza el estado editable con la prop 'routineData' cuando esta cambie
     useEffect(() => {
         setEditableRoutine(routineData);
     }, [routineData]);
@@ -108,6 +115,9 @@ const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
         setEditableRoutine({ ...editableRoutine, name: e.target.value });
     };
 
+    /**
+     * Maneja los cambios en cualquier campo de un ejercicio.
+     */
     const handleExerciseChange = (dayIndex, exerciseIndex, field, value) => {
         const updatedWorkouts = [...editableRoutine.workouts];
         updatedWorkouts[dayIndex].exercises[exerciseIndex] = {
@@ -128,15 +138,15 @@ const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
     return (
         <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, bgcolor: theme.palette.background.paper }}>
             
-            {/* ⭐️ ENCABEZADO Y BOTONES (Responsivo) ⭐️ */}
+            {/* ENCABEZADO Y BOTONES: Utiliza Stack para control de diseño responsivo */}
             <Stack 
-                direction={{ xs: 'column', sm: 'row' }} // ⭐️ Apilar en móvil, en línea en desktop ⭐️
+                direction={{ xs: 'column', sm: 'row' }} // Apilar en pantallas pequeñas, en línea en medianas y grandes
                 spacing={{ xs: 2, sm: 1 }}
                 justifyContent="space-between" 
-                alignItems={{ xs: 'stretch', sm: 'flex-end' }} // Estirar en móvil, alinear al final en desktop
+                alignItems={{ xs: 'stretch', sm: 'flex-end' }} // Estirar el alineamiento en móvil
                 mb={3}
             >
-                {/* Campo de Nombre */}
+                {/* Campo de Nombre de la Rutina */}
                 <TextField
                     label="Nombre de la Rutina"
                     variant="standard"
@@ -144,18 +154,16 @@ const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
                     onChange={handleRoutineNameChange}
                     sx={{ flexGrow: 1 }}
                     InputProps={{
-                        // Reducir ligeramente el tamaño de fuente en móvil
                         style: { fontSize: theme.breakpoints.down('sm') ? '1.5rem' : '1.8rem', fontWeight: 'bold' }
                     }}
                 />
 
-                {/* Contenedor de Botones */}
+                {/* Contenedor de Botones de Acción */}
                 <Box 
                     sx={{ 
                         display: 'flex', 
                         gap: 1, 
-                        // Los botones ocupan todo el ancho en móvil, o se adaptan en desktop
-                        width: { xs: '100%', sm: 'auto' } 
+                        width: { xs: '100%', sm: 'auto' } // Ancho completo en móvil
                     }}
                 >
                     <Button
@@ -163,7 +171,7 @@ const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
                         color="primary"
                         onClick={() => onSave(editableRoutine)}
                         startIcon={<SaveIcon />}
-                        sx={{ flexGrow: { xs: 1, sm: 0 } }} // Botón ancho completo en móvil
+                        sx={{ flexGrow: { xs: 1, sm: 0 } }} 
                     >
                         Guardar
                     </Button>
@@ -172,7 +180,7 @@ const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
                         color="secondary"
                         onClick={onGenerateNew}
                         startIcon={<RefreshIcon />}
-                        sx={{ flexGrow: { xs: 1, sm: 0 } }} // Botón ancho completo en móvil
+                        sx={{ flexGrow: { xs: 1, sm: 0 } }}
                     >
                         Generar Nuevo
                     </Button>
@@ -188,10 +196,10 @@ const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
                 </Typography>
             )}
 
-            {/* ⭐️ DÍAS DE ENTRENAMIENTO (Estrategia Grid ya implementada) ⭐️ */}
+            {/* DÍAS DE ENTRENAMIENTO: Uso de Grid para layout responsivo de las columnas */}
             <Grid container spacing={4}>
                 {editableRoutine.workouts.map((day, dayIndex) => (
-                    // Ocupa 12 en móvil, 6 en tablet, 4 en desktop. ¡Perfecto!
+                    // Ocupa 12/12 en móvil, 6/12 en tablet, 4/12 en desktop
                     <Grid item xs={12} md={6} lg={4} key={dayIndex}>
                         <Paper elevation={1} sx={{ p: 3, height: '100%' }}>
                             <Typography variant="h5" component="h3" sx={{ fontWeight: 'bold', mb: 0.5, color: 'primary.main' }}>
@@ -203,7 +211,7 @@ const RoutineDisplay = ({ routineData, onSave, onGenerateNew }) => {
                             <Divider sx={{ mb: 3 }} />
 
                             <Box>
-                                {/* Ejercicios */}
+                                {/* Mapeo de los ejercicios para este día */}
                                 {day.exercises.map((exercise, exerciseIndex) => (
                                     <ExerciseRow 
                                         key={exerciseIndex}

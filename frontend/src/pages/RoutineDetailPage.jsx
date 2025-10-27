@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
-// ⬇️ IMPORTACIONES DE MUI
+
 import { 
     Box, 
     Typography, 
@@ -17,7 +17,7 @@ import {
     Chip,
     Collapse, 
     IconButton,
-    Stack // ⭐️ Añadimos Stack para los Chips
+    Stack 
 } from '@mui/material';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -25,10 +25,11 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 // ----------------------------------------------------
-// Componente auxiliar para renderizar la tarjeta de un día (ACTUALIZADO CON RESPONSIVIDAD)
+// Componente auxiliar para renderizar la tarjeta de una sesión (DayCard)
+// Muestra el título del día y una lista colapsable de ejercicios.
 // ----------------------------------------------------
 const DayCard = ({ dayName, exercises }) => {
-    // Estado para controlar si el desplegable está abierto o cerrado
+    // Controla si la sección de ejercicios está abierta o cerrada
     const [open, setOpen] = useState(true); 
 
     const handleClick = () => {
@@ -47,14 +48,14 @@ const DayCard = ({ dayName, exercises }) => {
                 boxShadow: 3
             }}
         >
-            {/* Encabezado Clicable para Alternar el Despliegue */}
+            {/* Encabezado Clicable para alternar Collapse */}
             <Box 
                 onClick={handleClick} 
                 sx={{ 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'space-between', 
-                    mb: open ? { xs: 1.5, sm: 2 } : 0, // Margen responsivo
+                    mb: open ? { xs: 1.5, sm: 2 } : 0,
                     cursor: 'pointer' 
                 }}
             >
@@ -66,9 +67,9 @@ const DayCard = ({ dayName, exercises }) => {
                         color="primary" 
                         sx={{ 
                             fontWeight: 600,
-                            // ⭐️ Tamaño de fuente responsivo para el título de la rutina
+                            // Tamaño de fuente responsivo
                             fontSize: { xs: '1.2rem', sm: '1.5rem' }, 
-                            // Ocultar si hay desbordamiento en móvil
+                            // Manejo de desbordamiento
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -78,15 +79,17 @@ const DayCard = ({ dayName, exercises }) => {
                     </Typography>
                 </Box>
                 
-                {/* Ícono de Despliegue */}
+                {/* Ícono de Despliegue/Colapso */}
                 <IconButton size="small" color="primary" sx={{ ml: 1, flexShrink: 0 }}>
                     {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
                 </IconButton>
             </Box>
 
-            {/* Contenido que se Despliega/Colapsa */}
+            {/* Contenido Colapsable (Lista de Ejercicios) */}
             <Collapse in={open} timeout="auto" unmountOnExit>
-                <List disablePadding sx={{ mt: 2 }}>
+                <Divider sx={{ mb: 2, borderStyle: 'dashed', borderColor: 'primary.light' }} /> 
+                
+                <List disablePadding>
                     {Array.isArray(exercises) && exercises.length > 0 ? (
                         exercises.map((exercise, index) => (
                             <React.Fragment key={index}>
@@ -99,24 +102,29 @@ const DayCard = ({ dayName, exercises }) => {
                                 >
                                     <ListItemText
                                         primary={
+                                            // Nombre del ejercicio
                                             <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: { xs: '0.95rem', sm: '1rem' } }}>
-                                                {index + 1}. {exercise.name || 'Ejercicio Desconocido'}
+                                                {index + 1}. **{exercise.name || 'Ejercicio Desconocido'}**
                                             </Typography>
                                         }
                                         secondary={
-                                            // ⭐️ Usamos Stack para gestionar la distribución de los Chips
-                                            <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
+                                            // Sets, Reps y Notas usando Stack para responsividad
+                                            <Stack 
+                                                direction="row" 
+                                                spacing={{ xs: 1, sm: 1.5 }} 
+                                                sx={{ mt: 1, flexWrap: 'wrap', alignItems: 'center' }} 
+                                            >
                                                 <Chip 
                                                     label={`Sets: ${exercise.sets || 'N/A'}`} 
                                                     size="small" 
                                                     color="primary" 
-                                                    variant="outlined" 
+                                                    variant="filled" 
                                                 />
                                                 <Chip 
                                                     label={`Reps: ${exercise.reps || 'N/A'}`} 
                                                     size="small" 
                                                     color="secondary" 
-                                                    variant="outlined" 
+                                                    variant="filled" 
                                                 />
                                                 {(exercise.notes && exercise.notes !== '') && (
                                                     <Chip
@@ -125,14 +133,13 @@ const DayCard = ({ dayName, exercises }) => {
                                                         color="info"
                                                         variant="outlined"
                                                         sx={{ 
-                                                            mt: { xs: 1, sm: 0 }, // Un poco de margen superior en móvil si se envuelve
-                                                            maxWidth: '100%', 
-                                                            // Truncar la nota si es muy larga
+                                                            mt: { xs: 1, sm: 0 }, 
+                                                            maxWidth: { xs: '100%', sm: '300px' }, 
+                                                            // Truncar nota larga
                                                             '& .MuiChip-label': {
                                                                 overflow: 'hidden',
                                                                 textOverflow: 'ellipsis',
                                                                 whiteSpace: 'nowrap',
-                                                                maxWidth: { xs: '150px', sm: '300px' } 
                                                             }
                                                         }}
                                                     />
@@ -141,7 +148,8 @@ const DayCard = ({ dayName, exercises }) => {
                                         }
                                     />
                                 </ListItem>
-                                {index < exercises.length - 1 && <Divider component="li" variant="fullWidth" sx={{ borderStyle: 'dashed', borderColor: 'text.disabled' }} />}
+                                {/* Separador visual entre ejercicios */}
+                                {index < exercises.length - 1 && <Divider component="li" variant="fullWidth" sx={{ borderStyle: 'dashed', borderColor: 'grey.300' }} />}
                             </React.Fragment>
                         ))
                     ) : (
@@ -157,6 +165,7 @@ const DayCard = ({ dayName, exercises }) => {
 
 // ----------------------------------------------------
 // Componente Principal RoutineDetailPage 
+// Muestra el detalle completo de una rutina por ID.
 // ----------------------------------------------------
 const RoutineDetailPage = () => {
     const { routineId } = useParams();
@@ -164,8 +173,7 @@ const RoutineDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // ... (Lógica de useEffect y manejo de estados se mantiene igual)
-
+    // Lógica para cargar los detalles de la rutina desde el backend
     useEffect(() => {
         const fetchRoutineDetail = async () => {
           try {
@@ -175,6 +183,7 @@ const RoutineDetailPage = () => {
             const routineData = response.data;
             
             let planJson = routineData.plan_json;
+            // Parsea la cadena JSON si es necesario
             if (typeof planJson === 'string') {
               planJson = JSON.parse(planJson);
             }
@@ -183,8 +192,8 @@ const RoutineDetailPage = () => {
             setRoutine(routineData);
             setError(null);
           } catch (err) {
-            setError('Error al cargar los detalles de la rutina.');
-            console.error(err);
+            setError('Error al cargar los detalles de la rutina. Verifica la ID.');
+            console.error("Error fetching routine detail:", err);
           } finally {
             setLoading(false);
           }
@@ -193,11 +202,12 @@ const RoutineDetailPage = () => {
         fetchRoutineDetail();
       }, [routineId]);
 
+    // --- Renderizado Condicional: Carga y Errores ---
     if (loading) {
         return (
             <Box sx={{ textAlign: 'center', mt: 5 }}>
                 <CircularProgress color="primary" />
-                <Typography sx={{ mt: 2 }} color="text.secondary">Cargando...</Typography>
+                <Typography sx={{ mt: 2 }} color="text.secondary">Cargando detalles de la rutina...</Typography>
             </Box>
         );
     }
@@ -213,24 +223,27 @@ const RoutineDetailPage = () => {
     if (!routine || !routine.plan_json) {
         return (
             <Box sx={{ textAlign: 'center', mt: 5 }}>
-                <Alert severity="warning">No se encontró el plan de la rutina.</Alert>
+                <Alert severity="warning">No se encontró el plan de la rutina o la estructura es inválida.</Alert>
             </Box>
         );
     }
     
+    // Extrae el array de sesiones de entrenamiento
     const workoutsArray = routine.plan_json.workouts || []; 
     
     if (!Array.isArray(workoutsArray) || workoutsArray.length === 0) {
         return (
-            <Box sx={{ textAlign: 'center', mt: 5 }}>
-                <Alert severity="info">No se encontraron sesiones de entrenamiento en esta rutina.</Alert>
-            </Box>
+            <Container maxWidth="sm" sx={{ mt: 5 }}>
+                <Alert severity="info">La rutina no tiene sesiones de entrenamiento definidas.</Alert>
+            </Container>
         );
     }
 
+    // --- Renderizado Principal de la Rutina ---
     return (
         <Container component="main" maxWidth="md" sx={{ py: 4, minHeight: '100vh' }}>
             
+            {/* Título de la Rutina (Responsivo) */}
             <Typography 
                 variant="h3" 
                 component="h1" 
@@ -239,27 +252,27 @@ const RoutineDetailPage = () => {
                 sx={{ 
                     mb: 1, 
                     fontWeight: 700,
-                    // ⭐️ Título más pequeño en móvil
                     fontSize: { xs: '2rem', sm: '3rem' } 
                 }}
             >
                 {routine.name}
             </Typography>
             
+            {/* Descripción */}
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', mb: 4, px: { xs: 2, sm: 0 } }}>
                 <DescriptionIcon sx={{ mr: 1, mt: 0.5, color: 'text.secondary', flexShrink: 0 }} />
                 <Typography variant="body1" align="center" color="text.secondary">
-                    {routine.plan_json.description || 'Rutina personalizada.'}
+                    {routine.plan_json.description || 'Rutina personalizada sin descripción detallada.'}
                 </Typography>
             </Box>
             
-            {/* Contenedor de las tarjetas de los días */}
+            {/* Renderizado de las tarjetas DayCard para cada sesión */}
             <Box>
                 {workoutsArray.map((dayDetails, index) => (
-                    // Aseguramos que la primera tarjeta esté abierta por defecto
                     <DayCard 
                         key={index} 
-                        dayName={dayDetails.day || `Día ${index + 1}`} 
+                        // Usa 'day', 'focus' o un nombre genérico como título
+                        dayName={dayDetails.day || dayDetails.focus || `Día ${index + 1}`} 
                         exercises={dayDetails.exercises} 
                     />
                 ))}
@@ -268,7 +281,7 @@ const RoutineDetailPage = () => {
             <Divider sx={{ my: 4 }} />
             <Box textAlign="center">
                 <Typography variant="caption" color="text.disabled">
-                    Rutina generada por IA. Consulta a un profesional antes de comenzar cualquier nuevo programa de ejercicios.
+                    Rutina generada. **ID**: {routineId}.
                 </Typography>
             </Box>
         </Container>

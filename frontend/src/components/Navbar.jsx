@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
 import apiClient from '../api/apiClient';
 
-// ⬇️ IMPORTACIONES DE MUI
+
 import { 
     Box, 
     Typography, 
@@ -17,14 +17,13 @@ import {
     useTheme,
     IconButton,
     TextField,
-    // Importaciones Responsive
+    // Componentes Responsive
     useMediaQuery,
     Drawer,
     AppBar,
-    CssBaseline,
 } from '@mui/material';
 
-// ⬇️ ÍCONOS NECESARIOS
+// ÍCONOS NECESARIOS
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person'; 
 import HomeIcon from '@mui/icons-material/Home'; 
@@ -32,13 +31,12 @@ import ViewListIcon from '@mui/icons-material/ViewList';
 import DashboardIcon from '@mui/icons-material/Dashboard'; 
 import SearchIcon from '@mui/icons-material/Search';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter'; 
-import MenuIcon from '@mui/icons-material/Menu'; // Icono de menú
+import MenuIcon from '@mui/icons-material/Menu'; 
 
 const DRAWER_WIDTH = 260; 
 
 // ----------------------------------------------------
-// ⭐️ FUNCIÓN PRINCIPAL: Contenido del Sidebar (Lista, Perfil, Logout)
-// Lo extraemos para usarlo tanto en el Drawer (móvil) como en el Box (desktop)
+// CONTENIDO DEL SIDEBAR (Usado tanto en Drawer móvil como en Drawer fijo)
 // ----------------------------------------------------
 const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, location }) => (
     <Box 
@@ -50,7 +48,7 @@ const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, l
             bgcolor: 'background.paper',
         }}
     >
-        {/* 2. Encabezado / Logo */}
+        {/* 1. Encabezado / Logo de la Aplicación */}
         <Toolbar sx={{ height: 64, py: 2, px: 2, display: 'flex', alignItems: 'center' }}>
             <FitnessCenterIcon sx={{ color: 'primary.main', mr: 1 }} fontSize="large" />
             <Typography variant="h6" fontWeight="bold" sx={{ color: 'text.primary' }}>
@@ -58,34 +56,16 @@ const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, l
             </Typography>
         </Toolbar>
 
-        {/* 3. Caja de Búsqueda (Search users) */}
-        <Box sx={{ p: 2, pt: 0 }}>
-            <TextField
-                fullWidth
-                placeholder="Search users"
-                size="small"
-                InputProps={{
-                    startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
-                    sx: { borderRadius: theme.shape.borderRadius }
-                }}
-                sx={{
-                    '& .MuiOutlinedInput-root': {
-                        backgroundColor: theme.palette.background.default, 
-                        '& fieldset': { borderColor: 'transparent' },
-                        '&:hover fieldset': { borderColor: theme.palette.primary.main },
-                        '&.Mui-focused fieldset': { borderColor: theme.palette.primary.main },
-                    },
-                }}
-            />
-        </Box>
 
-        {/* 4. Enlaces de Navegación (Lista) */}
+
+        {/* 3. Enlaces de Navegación Principal */}
         <List sx={{ flexGrow: 1, p: 1 }}>
             {navItems.map((item) => (
                 <ListItem key={item.label} disablePadding>
                     <ListItemButton 
                         component={Link} 
                         to={item.path} 
+                        // Lógica de selección para resaltar el elemento activo
                         selected={
                             (item.path === '/' && location.pathname === '/') || 
                             (item.path !== '/' && location.pathname.startsWith(item.path))
@@ -99,6 +79,7 @@ const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, l
                                 '&:hover': { backgroundColor: theme.palette.primary.dark + '50' },
                             },
                             '& .MuiListItemIcon-root': {
+                                // Color del icono basado en el estado de selección
                                 color: (item.path === '/' && location.pathname === '/') || (item.path !== '/' && location.pathname.startsWith(item.path)) ? theme.palette.primary.main : theme.palette.text.primary,
                             },
                             color: theme.palette.text.primary 
@@ -111,7 +92,7 @@ const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, l
             ))}
         </List>
 
-        {/* 6. Perfil del Usuario y Autenticación (Pie de página) */}
+        {/* 4. Perfil y Autenticación (Pie de página del Sidebar) */}
         <Box sx={{ 
             p: 1, 
             borderTop: `1px solid ${theme.palette.text.secondary}20`, 
@@ -120,7 +101,7 @@ const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, l
             {isLoggedIn ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     
-                    {/* Botón 1: Perfil de Usuario (Icono + Nombre) */}
+                    {/* Enlace al perfil del usuario */}
                     <ListItemButton 
                         component={Link} 
                         to="/profile" 
@@ -137,7 +118,7 @@ const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, l
                         />
                     </ListItemButton>
 
-                    {/* Botón 2: Logout (Solo Icono) */}
+                    {/* Botón de cierre de sesión (Logout) */}
                     <IconButton 
                         onClick={handleLogout} 
                         color="error"
@@ -153,7 +134,7 @@ const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, l
                     </IconButton>
                 </Box>
             ) : (
-                // Botones de Login/Register
+                // Botones de Login/Register para usuarios no autenticados
                 <Box sx={{ display: 'flex', p: 1 }}>
                     <Button color="primary" component={Link} to="/login" sx={{ mr: 1, flexGrow: 1 }}>
                         Login
@@ -169,27 +150,27 @@ const SidebarContent = ({ userName, isLoggedIn, handleLogout, navItems, theme, l
 
 
 // ----------------------------------------------------
-// ⭐️ COMPONENTE NAVBAR PRINCIPAL
+// COMPONENTE NAVBAR PRINCIPAL
 // ----------------------------------------------------
 function Navbar() {
     const { isLoggedIn, logout } = useAuth(); 
     const [userName, setUserName] = useState("Perfil"); 
-    // ⭐️ NUEVO ESTADO: Controla si el Drawer (menú móvil) está abierto
+    // Controla si el Drawer (menú lateral) está abierto en dispositivos móviles
     const [mobileOpen, setMobileOpen] = useState(false); 
 
     const navigate = useNavigate();
     const location = useLocation();
     const theme = useTheme();
 
-    // ⭐️ DETECCIÓN DE PANTALLA: true si la pantalla es sm (600px) o más grande (desktop)
+    // Determina si la pantalla es de escritorio (sm o más grande)
     const isDesktop = useMediaQuery(theme.breakpoints.up('sm'));
 
-    // Función para manejar la apertura/cierre del menú móvil
+    // Alterna el estado del menú móvil
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
     };
 
-    // Lógica de Fetch (manteniéndola igual)
+    // Lógica para obtener el nombre de usuario al iniciar sesión
     useEffect(() => {
         const fetchUserName = async () => {
             if (!isLoggedIn) {
@@ -200,20 +181,21 @@ function Navbar() {
                 const statsResponse = await apiClient.get("/profile/stats");
                 setUserName(statsResponse.data.username || "Perfil"); 
             } catch (err) {
-                console.error("Error al obtener el nombre de usuario para Navbar:", err);
+                console.error("Error al obtener el nombre de usuario:", err);
                 setUserName("Perfil");
             }
         };
         fetchUserName();
     }, [isLoggedIn]); 
     
-    
+    // Cierra la sesión y redirige al login
     const handleLogout = () => {
         logout(); 
         setUserName("Perfil");
         navigate('/login'); 
     };
 
+    // Definición de enlaces de navegación
     const navItems = [
         { label: 'Home', icon: <HomeIcon />, path: '/' },
         { label: 'Rutinas', icon: <ViewListIcon />, path: '/routines' },
@@ -221,13 +203,12 @@ function Navbar() {
         { label: 'Profile', icon: <PersonIcon />, path: '/profile' },
     ];
     
-    // Propiedades comunes para el contenido del Sidebar
+    // Propiedades comunes pasadas al componente SidebarContent
     const sidebarProps = { userName, isLoggedIn, handleLogout, navItems, theme, location };
 
     return (
         <Box sx={{ display: 'flex' }}>
-            {/* 1. Barra Superior para Móviles (AppBar) */}
-            {/* Se muestra SOLO si NO es desktop */}
+            {/* 1. AppBar (Barra Superior Fija, visible SOLO en móvil) */}
             {!isDesktop && (
                 <AppBar
                     position="fixed"
@@ -237,7 +218,7 @@ function Navbar() {
                     }}
                 >
                     <Toolbar>
-                        {/* Ícono de menú que abre el Drawer */}
+                        {/* Botón para abrir el menú móvil */}
                         <IconButton
                             color="inherit"
                             aria-label="open drawer"
@@ -256,56 +237,45 @@ function Navbar() {
                 </AppBar>
             )}
 
-            {/* 2. Navegación Fija (Desktop) / Drawer (Móvil) */}
+            {/* 2. Componente de Navegación (Drawer para móvil, Sidebar fijo para desktop) */}
             <Box
                 component="nav"
                 sx={{ 
                     width: isDesktop ? DRAWER_WIDTH : 0, 
                     flexShrink: { sm: 0 } 
                 }}
-                aria-label="mailbox folders"
             >
-                {/* 2a. Drawer (Menú Móvil) */}
+                {/* 2a. Drawer temporal (Menú Móvil) */}
                 <Drawer
-                    // Se muestra SÓLO en pantallas pequeñas
                     variant="temporary"
                     open={mobileOpen}
                     onClose={handleDrawerToggle}
-                    ModalProps={{ keepMounted: true }} // Para mejor rendimiento
+                    ModalProps={{ keepMounted: true }} // Optimización de rendimiento
                     sx={{
-                        display: { xs: 'block', sm: 'none' },
+                        display: { xs: 'block', sm: 'none' }, // Mostrar solo en móvil
                         '& .MuiDrawer-paper': { boxSizing: 'border-box', width: DRAWER_WIDTH },
                     }}
                 >
-                    {/* Contenido extraído del Sidebar */}
                     <SidebarContent {...sidebarProps} />
                 </Drawer>
 
-                {/* 2b. Sidebar Fijo (Desktop) */}
+                {/* 2b. Drawer permanente (Sidebar Fijo para Desktop) */}
                 <Drawer
-                    // Se muestra SÓLO en pantallas grandes
                     variant="permanent"
                     sx={{
-                        display: { xs: 'none', sm: 'block' },
+                        display: { xs: 'none', sm: 'block' }, // Mostrar solo en desktop
                         '& .MuiDrawer-paper': { 
                             boxSizing: 'border-box', 
                             width: DRAWER_WIDTH,
-                            borderRight: '1px solid rgba(255, 255, 255, 0.1)', // Añadir el borde
-                            boxShadow: 3, // Añadir la sombra
+                            borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: 3, 
                         },
                     }}
                     open
                 >
-                    {/* Contenido extraído del Sidebar */}
                     <SidebarContent {...sidebarProps} />
                 </Drawer>
             </Box>
-
-            {/* ⭐️ NOTA IMPORTANTE: 
-            Tu componente principal (ej: App.js o MainLayout.js) debe manejar el 
-            margen/padding para que el contenido de la aplicación no quede oculto 
-            detrás del Navbar fijo (desktop) o el AppBar superior (móvil).
-            */}
         </Box>
     );
 }

@@ -2,8 +2,11 @@ const { GoogleGenAI } = require('@google/genai')
 
 // Función auxiliar para obtener el cliente de IA de forma segura
 function getGeminiClient() {
+  // NOTA: En un entorno de servidor real, la clave API debe estar en process.env.
+  // Aquí asumimos que el entorno de ejecución ya la proporciona.
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
+    // Esto es vital para detener el servicio si la configuración es incorrecta
     throw new Error(
       'GEMINI_API_KEY no configurada. Por favor, revisa tu archivo .env.',
     )
@@ -28,7 +31,7 @@ async function generateRoutine(userProfile, goal) {
         1. **FORMATO ESTRICTO DE SALIDA:** La respuesta debe ser **SOLO** un objeto JSON. **No incluyas explicaciones, encabezados Markdown (como \`\`\`json), o texto antes o después del objeto.**
         2. **Rol Experto:** La rutina debe ser **inteligente, progresiva y segura**, alineada con el objetivo principal del usuario.
         3. **Base de Datos:** Utiliza toda la información proporcionada por el usuario (Objetivo, Nivel, Frecuencia, Equipo, etc.) del formulario.
-        4. **RESTRICCIÓN DE DÍAS ÚNICOS:** Si se solicita más de un día, la rutina DEBE utilizar una **división de entrenamiento lógica** basada en el perfil del usuario (ej basate tu en la ciencia. 'Full Body', 'Torso/Pierna', 'PPL'). Cada entrada del array 'workouts' debe tener un valor **ÚNICO, DESCRIPTIVO y DIFERENTE** en la clave **'day'** (ejemplo basate en tus conocimientos: 'Día 1: Torso' y 'Día 2: Pierna').
+        4. **RESTRICCIÓN DE DÍAS ÚNICOS:** Si se solicita más de un día, la rutina DEBE utilizar una **división de entrenamiento lógica** basada en el perfil del usuario (ej. basate tu en la ciencia. 'Full Body', 'Torso/Pierna', 'PPL'). Cada entrada del array 'workouts' debe tener un valor **ÚNICO, DESCRIPTIVO y DIFERENTE** en la clave **'day'** (ejemplo basate en tus conocimientos: 'Día 1: Torso' y 'Día 2: Pierna').
 
         **ESTRUCTURA JSON REQUERIDA (Sigue EXCLUSIVAMENTE esta estructura):**
 
@@ -58,7 +61,7 @@ ${JSON.stringify(userProfile)}
 ${goal}
 `
 
-    // 2. Configuración del modelo para forzar la salida JSON (mayor fiabilidad)
+    // 2. Configuración del modelo para forzar la salida JSON
     const response = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -69,16 +72,12 @@ ${goal}
     })
 
     // 3. Extracción y Parsing
-    // El SDK devuelve el JSON en response.text
     const jsonString = response.text.trim()
 
-    // El SDK garantiza un JSON válido si responseMimeType es usado, pero es bueno tener el try/catch
+    // El SDK con responseMimeType debería garantizar un JSON válido
     return JSON.parse(jsonString)
   } catch (err) {
-    // Manejo de errores de la API (ej. API Key incorrecta o error en la generación)
     console.error('Error al comunicarse con la API de Gemini:', err.message)
-
-    // Lanzamos un error más claro para que el Controller lo capture y devuelva el 500
     throw new Error(
       'Fallo en la generación de rutina por error de la API de IA.',
     )
@@ -87,7 +86,6 @@ ${goal}
 
 /**
  * Analiza los datos de volumen y perfil del usuario para generar un informe de progreso.
- * AHORA INCLUYE ANÁLISIS DE PESO PROMEDIO.
  * @param {Array<Object>} aggregatedVolumeData - Datos de volumen agrupados por ejercicio y mes (incluye averageWeight).
  * @param {Object} userProfile - Perfil del usuario (objetivo, nivel, etc.).
  * @returns {Promise<string>} El análisis de texto generado por la IA.
@@ -140,7 +138,7 @@ async function analyzeVolumeProgress(aggregatedVolumeData, userProfile) {
 }
 
 /**
- * [NUEVA FUNCIÓN AUXILIAR] Utiliza la IA para clasificar dinámicamente una lista de ejercicios
+ * Utiliza la IA para clasificar dinámicamente una lista de ejercicios
  * en grupos musculares principales.
  * @param {Array<string>} uniqueExerciseNames - Lista de nombres de ejercicios únicos.
  * @returns {Promise<Object>} Objeto JSON mapeando { "Ejercicio": "GrupoMuscular" }.
@@ -182,91 +180,91 @@ async function classifyExercisesByMuscle(uniqueExerciseNames) {
 }
 
 /**
- * Analiza el volumen agregado, clasifica los ejercicios usando IA, y genera un análisis.
- *
- * @param {Array<Object>} aggregatedVolume - Datos de volumen por ejercicio (del repositorio)
- * @returns {Promise<{muscleVolume: Object, aiAnalysis: string}>}
- */
+ * Analiza el volumen agregado, clasifica los ejercicios usando IA, y genera un análisis del balance muscular.
+ *
+ * @param {Array<Object>} aggregatedVolume - Datos de volumen por ejercicio (del repositorio)
+ * @returns {Promise<{muscleVolume: Object, aiAnalysis: string}>}
+ */
 async function analyzeMuscleMap(aggregatedVolume) {
-    // 🛑 CORRECCIÓN: Inicializar el cliente de la IA en el ámbito de la función
+    // Inicializar el cliente de la IA en el ámbito de la función
     const genAI = getGeminiClient(); 
 
-    if (!aggregatedVolume || aggregatedVolume.length === 0) {
-        return { muscleVolume: {}, aiAnalysis: "No hay datos de volumen para analizar." };
-    }
+    if (!aggregatedVolume || aggregatedVolume.length === 0) {
+        return { muscleVolume: {}, aiAnalysis: "No hay datos de volumen para analizar." };
+    }
 
-    // 1. Obtener la lista única de ejercicios del log
-    const uniqueExerciseNames = [...new Set(aggregatedVolume.map(item => item.exerciseName))];
+    // 1. Obtener la lista única de ejercicios del log
+    const uniqueExerciseNames = [...new Set(aggregatedVolume.map(item => item.exerciseName))];
 
-    // 2. Usar la IA para clasificar estos ejercicios dinámicamente
-    let dynamicMuscleMap;
-    try {
-        dynamicMuscleMap = await classifyExercisesByMuscle(uniqueExerciseNames);
-    } catch (e) {
-        console.error("Fallo al clasificar ejercicios con IA:", e);
-        // Fallback: Si la IA falla, usamos un mapeo por defecto o marcamos todo como 'Otros'
-        dynamicMuscleMap = uniqueExerciseNames.reduce((map, name) => ({ ...map, [name]: 'Otros' }), {});
-    }
+    // 2. Usar la IA para clasificar estos ejercicios dinámicamente
+    let dynamicMuscleMap;
+    try {
+        dynamicMuscleMap = await classifyExercisesByMuscle(uniqueExerciseNames);
+    } catch (e) {
+        console.error("Fallo al clasificar ejercicios con IA. Usando 'Otros' como fallback:", e.message);
+        // Fallback: Si la IA falla, usamos un mapeo marcando todo como 'Otros'
+        dynamicMuscleMap = uniqueExerciseNames.reduce((map, name) => ({ ...map, [name]: 'Otros' }), {});
+    }
 
-    // 3. Mapeo de Volumen por Músculo usando el mapa dinámico
-    const muscleVolume = {};
-    let totalGlobalVolume = 0;
+    // 3. Mapeo de Volumen por Músculo usando el mapa dinámico
+    const muscleVolume = {};
+    let totalGlobalVolume = 0;
 
-    aggregatedVolume.forEach(item => {
-        const exerciseName = item.exerciseName;
-        const muscleGroup = dynamicMuscleMap[exerciseName] || 'Otros'; 
-        const volume = item.totalVolume;
+    aggregatedVolume.forEach(item => {
+        const exerciseName = item.exerciseName;
+        // Si el ejercicio no está en el mapa dinámico (ej. por falla parcial), usamos 'Otros'
+        const muscleGroup = dynamicMuscleMap[exerciseName] || 'Otros'; 
+        const volume = item.totalVolume;
 
-        muscleVolume[muscleGroup] = (muscleVolume[muscleGroup] || 0) + volume;
-        totalGlobalVolume += volume;
-    });
+        muscleVolume[muscleGroup] = (muscleVolume[muscleGroup] || 0) + volume;
+        totalGlobalVolume += volume;
+    });
 
-    // 4. ANÁLISIS DE IA DETALLADO
-    let analysisMessage;
+    // 4. ANÁLISIS DE IA DETALLADO DEL BALANCE MUSCULAR
+    let analysisMessage;
 
-    if (totalGlobalVolume === 0) {
-        analysisMessage = "No hay datos de entrenamiento suficientes para analizar el mapa muscular.";
-    } else {
-        const muscleDataString = JSON.stringify(muscleVolume);
+    if (totalGlobalVolume === 0) {
+        analysisMessage = "No hay datos de entrenamiento suficientes para analizar el mapa muscular.";
+    } else {
+        const muscleDataString = JSON.stringify(muscleVolume);
 
-        const prompt = `
-            Analiza el siguiente balance de volumen de entrenamiento (en kg) por grupo muscular en el último mes.
+        const prompt = `
+            Eres un entrenador de fuerza y acondicionamiento (S&C) experto, y tu objetivo es generar un análisis de balance muscular. Analiza el siguiente balance de volumen de entrenamiento (en kg) por grupo muscular en el último periodo.
 
-            Datos de Volumen Muscular: ${muscleDataString}
+            Datos de Volumen Muscular: ${muscleDataString}
 
-            Instrucciones para la IA:
-            1. **Identifica el músculo más y menos entrenado** (en volumen).
-            2. **Evalúa el balance general** (perfecto, ligeramente desequilibrado, o muy desequilibrado). Compara grupos opuestos como Pecho vs. Espalda, Cuádriceps/Isquiotibiales (si están separados) o Brazos (Bíceps vs. Tríceps) para identificar descompensaciones.
-            3. **Proporciona una recomendación de entrenamiento específica** y procesable (actionable) basada en el desequilibrio encontrado, sugiriendo un enfoque para el próximo mes.
+            Instrucciones para la IA:
+            1. **Identifica el músculo con mayor volumen** (el más entrenado).
+            2. **Evalúa el balance general** entre grupos musculares opuestos (Pecho vs. Espalda, Cuádriceps vs. Isquiotibiales (si están separados), Bíceps vs. Tríceps) para identificar posibles descompensaciones. Indica si el balance es adecuado o necesita ajuste.
+            3. **Proporciona una recomendación de entrenamiento específica** y procesable (actionable) basada en el desequilibrio encontrado, sugiriendo un enfoque para el próximo mes (ej. "Añade 1-2 series más de ejercicios de tracción horizontal la próxima semana.").
 
-            FORMATO DE RESPUESTA REQUERIDO:
-            Comienza con un resumen . Luego, usa párrafos separados o saltos de línea doble para los puntos 1, 2 y 3.
-            Asegúrate de que la salida sea legible directamente en una caja de texto con formato 'pre-wrap'.
-            Necesito que no sea muy extenso el análisis
-        `;
+            FORMATO DE RESPUESTA REQUERIDO:
+            Comienza con un resumen de una sola frase. Luego, usa saltos de línea doble para separar los puntos 1, 2 y 3.
+            Necesito que el análisis sea conciso, legible y motivador, con una extensión total no superior a 4-5 frases.
+        `;
 
-        try {
-            // Utilizamos genAI (el cliente inicializado) para la llamada
-            const response = await genAI.models.generateContent({ 
-                model: "gemini-2.5-flash", 
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                config: {
-                    temperature: 0.5, 
-                },
-            });
-            analysisMessage = response.text.trim();
+        try {
+            // Utilizamos genAI (el cliente inicializado) para la llamada
+            const response = await genAI.models.generateContent({ 
+                model: "gemini-2.5-flash", 
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                config: {
+                    temperature: 0.5, 
+                },
+            });
+            analysisMessage = response.text.trim();
 
-        } catch (error) {
-            console.error("Error al obtener el análisis de IA:", error);
-            analysisMessage = "⚠️ Error del servidor de IA. No se pudo generar el análisis de balance muscular.";
-        }
-    }
+        } catch (error) {
+            console.error("Error al obtener el análisis de IA:", error);
+            analysisMessage = "⚠️ Error del servidor de IA. No se pudo generar el análisis de balance muscular.";
+        }
+    }
 
-    // 5. Devolver los resultados
-    return {
-        muscleVolume: muscleVolume,
-        aiAnalysis: analysisMessage
-    };
+    // 5. Devolver los resultados
+    return {
+        muscleVolume: muscleVolume,
+        aiAnalysis: analysisMessage
+    };
 }
 
 module.exports = {

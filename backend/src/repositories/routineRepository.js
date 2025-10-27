@@ -14,15 +14,15 @@ class RoutineRepository {
     const result = await pool.query(query, values)
     return result.rows[0].id
   }
+  
   /**
-   * [NUEVA FUNCIÓN] Inserta una sesión de entrenamiento individual para planes de IA.
+   * Inserta una sesión de entrenamiento individual como rutina temporal (usado para planes de IA).
    * @param {number} userId - ID del usuario
    * @param {string} planName - Nombre general del plan (ej: "Rutina Semanal...")
    * @param {string} dayName - Nombre específico del día (ej: "Día 1: Torso")
    * @param {Object} sessionJson - Objeto JSON que contiene SOLO el workout de ese día
    * @returns {Promise<number>} ID de la sesión creada
    */
-
   async createWorkoutSessionRoutine(userId, planName, dayName, sessionJson) {
     // Concatenamos el nombre del plan y el nombre del día
     const combinedName = `${planName} - ${dayName}`
@@ -32,22 +32,24 @@ class RoutineRepository {
     const result = await pool.query(query, values)
     return result.rows[0].id
   }
+  
   /**
    * Busca todas las rutinas de un usuario específico.
    * @param {number} userId - ID del usuario.
    * @returns {Promise<Array<Object>>} Un arreglo de objetos de rutina.
    */
-
   async findByUserId(userId) {
     const query = `SELECT id, name, created_at, plan_json FROM routines WHERE user_id = $1 ORDER BY created_at DESC`
     const values = [userId]
     const result = await pool.query(query, values)
     return result.rows
   }
+  
   /**
    * Busca una rutina solo por su ID.
+   * @param {number} routineId - ID de la rutina
+   * @returns {Promise<Object|null>} El objeto de la rutina o null si no se encuentra.
    */
-
   async findById(routineId) {
     const query =
       'SELECT id, user_id, name, created_at, plan_json ' +
@@ -58,6 +60,15 @@ class RoutineRepository {
     return result.rows[0] || null
   }
 
+  /**
+   * Guarda un log de sesión de entrenamiento completada.
+   * @param {number} userId - ID del usuario
+   * @param {number} routineId - ID de la rutina base
+   * @param {string} dayName - Nombre del día de la rutina
+   * @param {number} durationSeconds - Duración total en segundos
+   * @param {Array<Object>} logData - Array de objetos de ejercicios completados (sets, reps, peso)
+   * @returns {Promise<number>} ID del log de entrenamiento creado
+   */
   async saveWorkoutSession(
     userId,
     routineId,
@@ -67,16 +78,19 @@ class RoutineRepository {
   ) {
     const query =
       'INSERT INTO workout_logs (user_id, routine_id, day_name, duration_seconds, log_data) VALUES ($1, $2, $3, $4, $5) RETURNING id'
-    const logJsonString = JSON.stringify(logData)
+    // LogData es un JSON array
+    const logJsonString = JSON.stringify(logData) 
 
     const values = [userId, routineId, dayName, durationSeconds, logJsonString]
     const result = await pool.query(query, values)
     return result.rows[0].id
   }
+  
   /**
    * Busca todos los logs de entrenamiento de un usuario.
+   * @param {number} userId - ID del usuario
+   * @returns {Promise<Array<Object>>} Arreglo de logs de entrenamiento.
    */
-
   async findWorkoutLogsByUserId(userId) {
     const query =
       'SELECT id, routine_id, day_name, duration_seconds, log_data, created_at FROM workout_logs WHERE user_id = $1 ORDER BY created_at DESC'
@@ -86,8 +100,8 @@ class RoutineRepository {
   }
 
   /**
-   * Obtiene el volumen agregado de los logs de entrenamiento de un usuario.
-   * Agrupa por Ejercicio y Mes/Año.
+   * Obtiene el volumen agregado de los logs de entrenamiento de un usuario por Ejercicio y Mes.
+   * Calcula volumen total, repeticiones totales y peso promedio por ejercicio y mes.
    * @param {number} userId - ID del usuario
    * @param {number} [daysBack=3650] - Número de días a incluir en el análisis.
    * @returns {Promise<Array<Object>>} Un arreglo de objetos de volumen agregado.
@@ -96,7 +110,6 @@ class RoutineRepository {
     const dateLimit = new Date()
     dateLimit.setDate(dateLimit.getDate() - daysBack)
 
-    // 🛑 CONSULTA CORREGIDA: Sin indentación interna para evitar errores de sintaxis de PostgreSQL (código 42601)
     const query = `
 WITH sets_expanded AS (
 SELECT
@@ -144,20 +157,18 @@ total_volume DESC;
   }
 
   /**
-     * Actualiza el plan_json y el nombre de una rutina existente.
-     * Dado que la tabla no tiene 'updated_at', solo actualizamos 'name' y 'plan_json'.
-     * @param {number} routineId - ID de la rutina a actualizar
-     * @param {string} name - Nuevo nombre de la rutina
-     * @param {Object} planJson - Objeto JSON completo de la rutina
-     * @returns {Promise<Object>} La rutina actualizada o null si no se encuentra.
-     */
+   * Actualiza el plan_json y el nombre de una rutina existente.
+   * @param {number} routineId - ID de la rutina a actualizar
+   * @param {string} name - Nuevo nombre de la rutina
+   * @param {Object} planJson - Objeto JSON completo de la rutina
+   * @returns {Promise<Object|null>} La rutina actualizada o null si no se encuentra.
+   */
     async updatePlanJson(routineId, name, planJson) {
         const query = `
             UPDATE routines
             SET name = $2, plan_json = $3
             WHERE id = $1
             RETURNING id, name, plan_json, created_at, user_id;
-            -- Devolvemos created_at en lugar de updated_at, ya que no existe.
         `;
         
         const values = [routineId, name, planJson]; 
@@ -176,13 +187,14 @@ total_volume DESC;
         const query = 'DELETE FROM routines WHERE id = $1 RETURNING id';
         const values = [routineId];
         const result = await pool.query(query, values);
-        return result.rowCount; // 1 si se eliminó, 0 si no se encontró
+        return result.rowCount;
     }
 
-   /**
-     * Obtiene el número total de logs y la fecha de creación del usuario.
+    /**
+     * Obtiene el número total de logs y la fecha de creación del usuario (para el perfil).
+     * Incluye el nombre del usuario (asumiendo unión con la tabla 'users').
      * @param {number} userId - ID del usuario.
-     * @returns {Promise<Object>} {totalWorkouts, memberSince, username}
+     * @returns {Promise<Object|null>} {totalWorkouts, memberSince, username} o null.
      */
     async getUserWorkoutStats(userId) {
         const query = `
@@ -211,7 +223,6 @@ total_volume DESC;
         
         if (!result.rows[0]) return null;
 
-        // La lógica de manejar el caso sin logs se simplifica gracias al LEFT JOIN y COALESCE
         return {
             totalWorkouts: parseInt(result.rows[0].total_workouts, 10),
             memberSince: result.rows[0].member_since,
@@ -220,7 +231,7 @@ total_volume DESC;
     }
 
     /**
-     * Calcula los Ejercicios más Frecuentes.
+     * Calcula los Ejercicios más Frecuentes, contando cuántos logs contienen cada ejercicio.
      * @param {number} userId - ID del usuario.
      * @returns {Promise<Object>} Objeto con {exerciseName: count}
      */
@@ -258,7 +269,7 @@ total_volume DESC;
 
 
     /**
-     * Obtiene la progresión de Volumen, Duración y Reps agrupada por mes.
+     * Obtiene la progresión de Volumen, Duración y Reps total agrupada por mes para gráficos globales.
      * @param {number} userId - ID del usuario
      * @param {number} [daysBack=3650] - Filtro de tiempo para el análisis
      * @returns {Promise<Array<Object>>} Arreglo con la progresión mensual.
@@ -286,6 +297,7 @@ total_volume DESC;
                 SUM(
                     (se.set_data ->> 'reps')::NUMERIC
                 ) AS total_reps_month,
+                -- Suma la duración total de todas las sesiones registradas en ese mes
                 SUM(
                     se.duration_seconds
                 ) AS total_duration_seconds

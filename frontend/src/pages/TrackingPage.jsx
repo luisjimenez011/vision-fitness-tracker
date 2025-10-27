@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
-// ⬇️ IMPORTACIONES DE MUI
+
 import { 
     Container, 
     Box, 
@@ -19,6 +19,8 @@ import {
     ListItem,
     Divider,
 } from '@mui/material';
+
+
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -28,7 +30,8 @@ import AddIcon from '@mui/icons-material/Add';
 
 
 // ----------------------------------------------------
-// COMPONENTE MessageToast (Migrado a MUI Alert/Snackbar)
+// COMPONENTE MessageAlert
+// Muestra mensajes temporales (éxito o error) en la parte superior.
 // ----------------------------------------------------
 const MessageAlert = ({ message, type, onClose }) => {
     if (!message) return null;
@@ -38,18 +41,18 @@ const MessageAlert = ({ message, type, onClose }) => {
             severity={type === 'error' ? 'error' : 'success'} 
             onClose={onClose}
             variant="filled"
-            // 🚀 CORRECCIÓN 1: Centrado en móvil para evitar que se corte el mensaje de "Set registrado."
+            // Estilos para posicionar el mensaje, centrado en móvil y a la derecha en escritorio
             sx={{ 
                 position: 'fixed', 
                 top: 20, 
                 zIndex: 1000,
-                // Centrar horizontalmente en móvil (xs)
+                // Centrado horizontal en móvil (xs)
                 left: { xs: '50%', md: 'auto' }, 
                 transform: { xs: 'translateX(-50%)', md: 'none' },
-                // Pegar a la derecha en escritorio (md)
+                // Posición a la derecha en escritorio (md)
                 right: { xs: 'auto', md: 20 }, 
                 width: { xs: '90%', sm: 'auto' },
-                maxWidth: { xs: '90%', sm: '400px' }, // Limita el ancho máximo en pantallas más grandes
+                maxWidth: { xs: '90%', sm: '400px' }, 
             }}
         >
             {message}
@@ -59,29 +62,36 @@ const MessageAlert = ({ message, type, onClose }) => {
 
 // ----------------------------------------------------
 // COMPONENTE TrackingPage
+// Componente principal para el seguimiento del entrenamiento en tiempo real.
 // ----------------------------------------------------
 const TrackingPage = () => {
     const { routineId } = useParams();
     const navigate = useNavigate();
 
+    // Estados de la rutina y el entrenamiento
     const [routine, setRoutine] = useState(null);
     const [currentDayWorkout, setCurrentDayWorkout] = useState(null);
+    const [loading, setLoading] = useState(true);
+    
+    // Estados del cronómetro
     const [timer, setTimer] = useState(0);
     const [isRunning, setIsRunning] = useState(false);
+    
+    // Estado para sets registrados y sus inputs
     const [trackedSets, setTrackedSets] = useState([]);
+    const [inputs, setInputs] = useState({}); // Almacena el peso y reps para el nuevo set a añadir
+    const [isBodyweightMode, setIsBodyweightMode] = useState({}); // Modo calistenia (peso corporal) por ejercicio
     
-    const [inputs, setInputs] = useState({}); 
-    const [isBodyweightMode, setIsBodyweightMode] = useState({}); 
-    
+    // Estado para mensajes de alerta
     const [message, setMessage] = useState({ text: null, type: null });
-    const [loading, setLoading] = useState(true);
 
+    // Función para mostrar mensajes de alerta temporales
     const showMessage = (text, type = 'success') => {
         setMessage({ text, type });
         setTimeout(() => setMessage({ text: null, type: null }), 4000);
     };
 
-    // Lógica para cargar la rutina (Sin cambios)
+    // Efecto para cargar la rutina al montar el componente
     useEffect(() => {
         const fetchRoutine = async () => {
             try {
@@ -92,7 +102,8 @@ const TrackingPage = () => {
                 const workouts = fullRoutine.plan_json?.workouts;
                 
                 if (workouts && workouts.length > 0) {
-                    setCurrentDayWorkout(workouts[0]);
+                    // Carga el primer día de entrenamiento de la rutina
+                    setCurrentDayWorkout(workouts[0]); 
                 } else {
                     showMessage('El plan cargado no contiene ejercicios válidos para el seguimiento.', 'error');
                 }
@@ -107,7 +118,7 @@ const TrackingPage = () => {
         fetchRoutine();
     }, [routineId]);
 
-    // Lógica del Cronómetro (Sin cambios)
+    // Efecto para el funcionamiento del cronómetro
     useEffect(() => {
         let interval = null;
         if (isRunning) {
@@ -120,7 +131,7 @@ const TrackingPage = () => {
         return () => clearInterval(interval);
     }, [isRunning, timer]);
 
-    // Manejador genérico de inputs para la nueva serie (Sin cambios)
+    // Manejador genérico de inputs para la nueva serie
     const handleInputChange = (exerciseName, field, value) => {
         setInputs((prev) => ({
             ...prev,
@@ -131,13 +142,14 @@ const TrackingPage = () => {
         }));
     };
 
-    // Función auxiliar para re-numerar las series (Sin cambios)
+    // Función auxiliar para re-numerar las series después de añadir/eliminar
     const reindexSets = (sets) => {
         const indexedSets = [];
         const exerciseSetCounts = {};
 
         sets.forEach(set => {
             const name = set.exerciseName;
+            // Cuenta y asigna el número de set por ejercicio
             exerciseSetCounts[name] = (exerciseSetCounts[name] || 0) + 1;
             indexedSets.push({
                 ...set,
@@ -147,7 +159,7 @@ const TrackingPage = () => {
         return indexedSets;
     };
     
-    // Función para obtener el índice real del set (Sin cambios)
+    // Función para obtener el índice en el array global 'trackedSets' a partir del nombre del ejercicio y el número de set
     const getGlobalSetIndex = (exerciseName, setIndexInExercise) => {
         let count = 0;
         for (let i = 0; i < trackedSets.length; i++) {
@@ -161,7 +173,7 @@ const TrackingPage = () => {
         return -1;
     };
 
-    // Lógica para añadir una nueva serie (Sin cambios)
+    // Lógica para añadir una nueva serie (set)
     const handleAddSet = (exerciseName) => {
         if (!isRunning) {
             showMessage('Debes iniciar el cronómetro para registrar sets.', 'error');
@@ -172,29 +184,30 @@ const TrackingPage = () => {
 
         let { weight, reps } = inputs[exerciseName] || { weight: '', reps: '' };
         
-        // Validación de Reps
+        // Validación de Repeticiones (debe ser un entero positivo)
         if (!/^\d+$/.test(reps) || parseInt(reps, 10) <= 0) {
             showMessage('Introduce solo un valor numérico válido (> 0) para Repeticiones.', 'error');
             return;
         }
         
-        // Validación de Peso
+        // Validación de Peso (si no es calistenia, debe ser un número no negativo)
         if (!isBodyweight) {
             if (!/^\d+(\.\d+)?$/.test(weight) || parseFloat(weight) < 0) {
                 showMessage('Introduce un valor numérico válido (>= 0) para Peso.', 'error');
                 return;
             }
         } else {
+            // Si es calistenia, el peso es 0
             weight = 0;
         }
 
         const newSet = {
             exerciseName,
-            set: 0, 
+            set: 0, // Se reindexará más tarde
             weight: parseFloat(weight), 
             reps: parseInt(reps, 10),
             isBodyweight: isBodyweight,
-            timestamp: new Date().toISOString() 
+            timestamp: new Date().toISOString() // Marca de tiempo para orden y clave única
         };
 
         setTrackedSets((prev) => {
@@ -204,19 +217,21 @@ const TrackingPage = () => {
         
         showMessage(`Set registrado.`, 'success');
         
-        // Limpiamos los inputs
+        // Limpiamos los inputs tras el registro
         setInputs((prev) => ({
             ...prev,
             [exerciseName]: { weight: isBodyweight ? '' : '', reps: '' },
         }));
     };
     
-    // Actualiza el peso o las reps de un set (Sin cambios)
+    // Actualiza el peso o las reps de un set existente
     const handleUpdateSet = (index, field, value) => {
         
+        // Validación de formato al escribir
         if (field === 'reps' && !/^\d*$/.test(value)) return;
         if (field === 'weight' && !/^\d*(\.\d*)?$/.test(value)) return;
         
+        // Convierte a número (0 si está vacío para evitar problemas)
         const numericValue = value === '' ? 0 : parseFloat(value);
         
         setTrackedSets(prevSets => {
@@ -229,32 +244,35 @@ const TrackingPage = () => {
         });
     };
 
-    // Elimina un set (Sin cambios)
+    // Elimina un set del seguimiento
     const handleRemoveSet = (index, setNumber, exerciseName) => {
         if (!window.confirm(`¿Estás seguro de que quieres eliminar el Set ${setNumber} de ${exerciseName}?`)) {
             return;
         }
 
         setTrackedSets(prevSets => {
+            // Filtra el set a eliminar por su índice global
             const newSets = prevSets.filter((_, i) => i !== index);
             showMessage('Set eliminado.', 'success');
+            // Reindexa los sets restantes para mantener la numeración correcta
             return reindexSets(newSets); 
         });
     };
 
 
-    // Lógica para finalizar el entrenamiento (Sin cambios)
+    // Lógica para finalizar el entrenamiento
     const handleFinishWorkout = async () => {
         if (timer === 0) {
             showMessage('El entrenamiento no ha comenzado.', 'error');
             return;
         }
 
+        // Advertencia si no hay sets registrados
         if (trackedSets.length === 0 && !window.confirm('No has registrado sets. ¿Seguro que quieres finalizar el entrenamiento sin guardar progreso?')) {
             return;
         }
         
-        setIsRunning(false);
+        setIsRunning(false); // Detiene el cronómetro antes de guardar
         
         try {
             await apiClient.post('/workout/finish-session', {
@@ -264,8 +282,9 @@ const TrackingPage = () => {
                 logData: trackedSets,
             });
 
-            showMessage('¡Entrenamiento guardado con éxito!', 'success');
+            showMessage('Entrenamiento guardado con éxito!', 'success');
             
+            // Redirige al dashboard después de un breve retraso
             setTimeout(() => navigate('/dashboard'), 1500); 
 
         } catch (error) {
@@ -274,7 +293,7 @@ const TrackingPage = () => {
         }
     };
 
-    // Función para formatear el tiempo (Sin cambios)
+    // Función para formatear el tiempo del cronómetro a HH:MM:SS
     const formatTime = (totalSeconds) => {
         const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
         const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
@@ -282,6 +301,7 @@ const TrackingPage = () => {
         return `${hours}:${minutes}:${seconds}`;
     };
 
+    // Muestra un indicador de carga mientras se obtienen los datos de la rutina
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
@@ -291,6 +311,7 @@ const TrackingPage = () => {
         );
     }
     
+    // Muestra un mensaje de error si la rutina no se pudo cargar
     if (!routine) {
         return (
             <Container maxWidth="sm" sx={{ mt: 5 }}>
@@ -299,9 +320,10 @@ const TrackingPage = () => {
         );
     }
 
-
+    // Renderizado del componente principal
     return (
         <>
+            {/* Componente para mostrar mensajes de alerta */}
             <MessageAlert 
                 message={message.text} 
                 type={message.type} 
@@ -310,6 +332,7 @@ const TrackingPage = () => {
 
             <Container component="main" maxWidth="sm" sx={{ py: { xs: 2, md: 4 }, minHeight: '100vh' }}>
                 
+                {/* Título de la Rutina y el Día */}
                 <Typography variant="h4" component="h1" color="primary" align="center" sx={{ mb: 1, fontWeight: 700, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
                     {routine.name}
                 </Typography>
@@ -317,7 +340,7 @@ const TrackingPage = () => {
                     {currentDayWorkout?.day || 'Día Desconocido'}: {currentDayWorkout?.focus || 'Entrenamiento del día'}
                 </Typography>
 
-                {/* Sección del Cronómetro y Controles (Sin cambios) */}
+                {/* Sección del Cronómetro y Controles */}
                 <Box sx={{ 
                     textAlign: 'center', 
                     margin: '20px 0', 
@@ -340,6 +363,7 @@ const TrackingPage = () => {
                         {formatTime(timer)}
                     </Typography>
                     <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        {/* Botón Iniciar/Pausar Cronómetro */}
                         <Button 
                             variant="contained" 
                             color={isRunning ? 'warning' : 'success'}
@@ -350,6 +374,7 @@ const TrackingPage = () => {
                         >
                             {isRunning ? 'Pausar' : (timer === 0 ? 'Empezar' : 'Continuar')}
                         </Button>
+                        {/* Botón Finalizar Entrenamiento */}
                         <Button 
                             variant="outlined" 
                             color="error"
@@ -369,6 +394,7 @@ const TrackingPage = () => {
                     {currentDayWorkout?.exercises?.map((exercise, index) => (
                         <Card key={index} sx={{ p: { xs: 2, md: 3 }, boxShadow: 3 }}>
                             
+                            {/* Nombre del Ejercicio y Plan */}
                             <Typography variant="h5" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 1, color: 'text.primary', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                                 <FitnessCenterIcon sx={{ mr: 1, verticalAlign: 'middle' }} color="primary" />
                                 {exercise.name}
@@ -381,13 +407,12 @@ const TrackingPage = () => {
                                 Notas: {exercise.notes || 'N/A'}
                             </Typography>
 
-                            {/* Sets registrados */}
+                            {/* Sets registrados (Historial) */}
                             <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.main', borderRadius: 1 }}>
                                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.contrastText' }}>
                                     Progreso ({trackedSets.filter((s) => s.exerciseName === exercise.name).length} / {exercise.sets}):
                                 </Typography>
                                 
-                                {/* 🚀 CORRECCIÓN 2: Se añade disableGutters a List */}
                                 <List disablePadding disableGutters>
                                     {trackedSets
                                         .filter((s) => s.exerciseName === exercise.name)
@@ -398,8 +423,7 @@ const TrackingPage = () => {
                                             return (
                                                 <React.Fragment key={s.timestamp + s.set}>
                                                     <ListItem 
-                                                        // 🚀 CORRECCIÓN 2: Se añade disableGutters a ListItem
-                                                        disableGutters // ✨ Solución al error "Unexpected token"
+                                                        disableGutters // Elimina el padding horizontal de los elementos de la lista
                                                         sx={{ 
                                                             py: 1, 
                                                             display: 'flex', 
@@ -408,12 +432,12 @@ const TrackingPage = () => {
                                                             alignItems: 'center',
                                                             bgcolor: 'transparent',
                                                             color: 'primary.contrastText',
+                                                            // Estilos para los inputs dentro del list item
                                                             '& .MuiTextField-root': {
-                                                                // Ajustes de estilo para inputs
                                                                 '& .MuiInputBase-input': { 
                                                                     color: 'primary.contrastText', 
                                                                     padding: '4px 8px', 
-                                                                    fontSize: { xs: '0.8rem', sm: 'inherit' } // Fuente más pequeña
+                                                                    fontSize: { xs: '0.8rem', sm: 'inherit' }
                                                                 },
                                                                 '& .MuiInputLabel-root': { 
                                                                     color: 'primary.contrastText', 
@@ -431,8 +455,7 @@ const TrackingPage = () => {
                                                             alignItems: 'center', 
                                                             flexGrow: 1, 
                                                             flexWrap: 'nowrap', 
-                                                            // 🚀 CORRECCIÓN 3: Reducción de espacio entre elementos (gap)
-                                                            gap: { xs: 0.5, sm: 1 } 
+                                                            gap: { xs: 0.5, sm: 1 } // Espacio reducido entre elementos
                                                         }}>
                                                             <Typography sx={{ fontWeight: 'medium', mr: 0.5, minWidth: 'max-content', fontSize: { xs: '0.8rem', sm: 'inherit' } }}>
                                                                 Set {s.set}:
@@ -459,8 +482,7 @@ const TrackingPage = () => {
                                                                 variant="outlined"
                                                                 value={s.weight || ''}
                                                                 onChange={(e) => handleUpdateSet(globalIndex, 'weight', e.target.value)}
-                                                                // 🚀 CORRECCIÓN 3: Reducción del ancho del input de peso
-                                                                sx={{ width: { xs: 55, sm: 70 } }} 
+                                                                sx={{ width: { xs: 55, sm: 70 } }} // Ancho reducido
                                                                 disabled={isSetBodyweight}
                                                             /> 
                                                             {!isSetBodyweight && <Typography sx={{ mr: 0.5, alignSelf: 'center', minWidth: 'max-content', fontSize: { xs: '0.8rem', sm: 'inherit' } }}>kg x</Typography>}
@@ -473,22 +495,21 @@ const TrackingPage = () => {
                                                                 variant="outlined"
                                                                 value={s.reps}
                                                                 onChange={(e) => handleUpdateSet(globalIndex, 'reps', e.target.value)}
-                                                                // 🚀 CORRECCIÓN 3: Reducción del ancho del input de repeticiones
-                                                                sx={{ width: { xs: 55, sm: 70 } }}
+                                                                sx={{ width: { xs: 55, sm: 70 } }} // Ancho reducido
                                                             /> 
                                                         </Box>
                                                         
-                                                        {/* Botón de Eliminar */}
+                                                        {/* Botón de Eliminar Set */}
                                                         <IconButton 
                                                             color="inherit"
                                                             onClick={() => handleRemoveSet(globalIndex, s.set, s.exerciseName)} 
                                                             aria-label="eliminar set"
-                                                            // 🚀 CORRECCIÓN 3: Ajuste de margen para el botón de eliminar
-                                                            sx={{ ml: 0.5, flexShrink: 0 }}
+                                                            sx={{ ml: 0.5, flexShrink: 0 }} // Margen a la izquierda y evita encoger
                                                         >
                                                             <DeleteIcon fontSize="small" />
                                                         </IconButton>
                                                     </ListItem>
+                                                    {/* Divisor entre sets */}
                                                     {idx < trackedSets.filter((s) => s.exerciseName === exercise.name).length - 1 && <Divider component="li" sx={{ bgcolor: 'rgba(255, 255, 255, 0.2)' }} />}
                                                 </React.Fragment>
                                             );
@@ -496,9 +517,10 @@ const TrackingPage = () => {
                                 </List>
                             </Box>
 
-                            {/* Formulario para nuevo set (Sin cambios) */}
+                            {/* Formulario para nuevo set */}
                             <Box sx={{ mt: 3, p: 2, border: '1px dashed', borderColor: 'grey.300', borderRadius: 1 }}>
                                 
+                                {/* Selector para modo peso corporal (Calistenia) */}
                                 <FormControlLabel
                                     control={
                                         <Switch 
@@ -508,6 +530,7 @@ const TrackingPage = () => {
                                                     ...prev, 
                                                     [exercise.name]: e.target.checked 
                                                 }));
+                                                // Limpia el input de peso si se activa el modo calistenia
                                                 if(e.target.checked) {
                                                     setInputs(prev => ({
                                                         ...prev,

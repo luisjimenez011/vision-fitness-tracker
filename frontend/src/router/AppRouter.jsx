@@ -12,13 +12,12 @@ import RoutineEditPage from '../pages/RoutineEditPage';
 import ProfilePage from '../pages/ProfilePage';
 import RoutineCreatePage from '../pages/RoutineCreatePage';
 
-// Componente Protegido Corregido
+
 function ProtectedRoute({ element }) {
-  // CORRECCIÓN: Usamos la clave 'isLoggedIn' (la convención establecida) y 'loading'
   const { isLoggedIn, loading } = useAuth();
   
   if (loading) {
-    // Es crucial esperar a que el estado de autenticación se cargue
+    
     return <div style={{ textAlign: 'center', marginTop: '50px' }}>Verificando autenticación...</div>;
   }
 

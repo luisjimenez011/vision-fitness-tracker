@@ -13,13 +13,13 @@ router.post('/save', authenticateToken, routineController.save);
 // Ruta protegida para obtener todas las rutinas guardadas por el usuario
 router.get('/my-routines', authenticateToken, routineController.getMine);
 
-// NUEVA RUTA: Ruta protegida para obtener una rutina específica por ID
+// Ruta protegida para obtener una rutina específica por ID
 router.get('/:routineId', authenticateToken, routineController.getOne);
 
-// NUEVA RUTA: Ruta protegida para actualizar una rutina por ID
+// Ruta protegida para actualizar una rutina por ID
 router.put('/:id', authenticateToken, routineController.updateRoutine);
 
-//  NUEVA RUTA: Ruta protegida para eliminar una rutina por ID
+// Ruta protegida para eliminar una rutina por ID
 router.delete('/:id', authenticateToken, routineController.deleteRoutine);
 
 module.exports = router;
