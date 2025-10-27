@@ -4,13 +4,13 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import AppRouter from './router/AppRouter.jsx';
 import Navbar from './components/Navbar.jsx';
 import MainLayout from './components/MainLayout.jsx'; 
-import { ThemeProvider } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import { customTheme } from './theme'; 
 import { Box } from '@mui/material'; 
 
 function App() {
-    return (
+    return (    
         <ThemeProvider theme={customTheme}>
             <CssBaseline /> 
             
