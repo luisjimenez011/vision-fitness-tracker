@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
+const dns = require('dns');
 // Render y Supabase solo necesitan esta variable, que incluye todos los detalles.
 const connectionString = process.env.DATABASE_URL;
 
@@ -14,6 +15,11 @@ if (!connectionString) {
 const pool = new Pool({
     connectionString: connectionString,
     // Configuración SSL necesaria para conexiones externas (Render a Supabase)
+    //  SOLUCIÓN DEFINITIVA: Forzar la búsqueda de DNS solo para IPv4
+    dnsLookup: (hostname, callback) => {
+        // Le dice a Node que busque solo direcciones de la familia 4 (IPv4)
+        dns.lookup(hostname, 4, callback); 
+    },
     family: 4,
     ssl: {
       rejectUnauthorized: false
