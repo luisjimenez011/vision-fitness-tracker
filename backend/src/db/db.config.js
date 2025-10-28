@@ -14,6 +14,7 @@ if (!connectionString) {
 const pool = new Pool({
     connectionString: connectionString,
     // Configuración SSL necesaria para conexiones externas (Render a Supabase)
+    family: 4,
     ssl: {
       rejectUnauthorized: false
     }
