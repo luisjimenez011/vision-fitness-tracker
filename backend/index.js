@@ -9,7 +9,7 @@ const userRoutes = require('./src/routes/userRoutes');
 
 // 1. Definir el origen(es) permitido(s)
 const allowedOrigins = [
-    'https://vision-fitness-tracker-frontend-5zew4ba6c-luisjims-projects.vercel.app', 
+    'https://*.vercel.app', 
     
     // Orígenes locales para desarrollo
     'http://localhost:3000', 
