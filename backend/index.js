@@ -19,19 +19,21 @@ const allowedOrigins = [
 ];
 
 // 2. Opciones de configuración de CORS SIMPLIFICADAS
+// Opciones de configuración de CORS (FINAL Y MÁS ROBUSTA)
 const corsOptions = {
-    // Pasar el array con el wildcard permite a la librería 'cors' manejar la lógica
-    // Esto es mucho más fiable en entornos Serverless (Vercel)
     origin: allowedOrigins,
     
     // Métodos necesarios para las peticiones REST
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     
-    // Permite que se envíen cookies y headers de autenticación (tokens)
+    // Añadimos Max-Age: 1 hora
+    maxAge: 3600, 
+    
+    // Permite tokens
     credentials: true, 
     
-    // Encabezados que el cliente puede enviar (necesario para JWT y Content-Type)
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    // Encabezados
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], 
 };
 
 const app = express()
