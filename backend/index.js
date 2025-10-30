@@ -1,52 +1,55 @@
 require('dotenv').config()
 const express = require('express')
-const cors = require('cors')
 const authRoutes = require('./src/routes/authRoutes')
 const routineRoutes = require('./src/routes/routineRoutes');
 const workoutRoutes = require('./src/routes/workoutRoutes');
 const userRoutes = require('./src/routes/userRoutes'); 
 
 
-// 1. Definir los orígenes permitidos (para la validación final del POST)
-const allowedOrigins = [
-    'https://*.vercel.app', 
-    'http://localhost:3000', 
-    'http://localhost:5173' 
-];
-
-// 2. Opciones de configuración de CORS (Solo para la solicitud POST/GET)
-const corsOptions = {
-    origin: allowedOrigins,
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    credentials: true, 
-    allowedHeaders: ['Content-Type', 'Authorization'],
-};
-
 const app = express()
 
 // ***************************************************************
-// BLOQUE DE SOLUCIÓN DE FALLO DE OPTIONS: FORZAR 204
+// SOLUCIÓN FINAL CORS: Middleware Manual y Único para Vercel
 // ***************************************************************
 app.use((req, res, next) => {
-    // Si es una solicitud OPTIONS, configuramos los encabezados manualmente y terminamos
+    // 1. Establecer dominios permitidos para el motor CORS del navegador
+    const ALLOWED_ORIGIN = 'https://vision-fitness-tracker.vercel.app'; 
+    const WILDCARD_ORIGIN = 'https://*.vercel.app'; 
+
+    let origin = req.headers.origin;
+
+    // 2. Determinar el origen dinámicamente:
+    if (!origin || origin === 'null') {
+        // Permitir llamadas sin origen (Postman, scripts, etc.)
+        origin = WILDCARD_ORIGIN; 
+    } else if (origin.endsWith('.vercel.app') || origin.startsWith('http://localhost:')) {
+        // Permitir el dominio de Vercel y local
+        origin = req.headers.origin; 
+    } else {
+        // Fallback a un dominio fijo si no es uno de los esperados
+        origin = ALLOWED_ORIGIN; 
+    }
+
+    // 3. Establecer TODOS los encabezados para OPTIONS y la Respuesta Real (POST/GET)
+    // ESTO GARANTIZA que el Access-Control-Allow-Origin esté en la respuesta 200 OK.
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '3600'); 
+
+    // 4. Manejar el OPTIONS (Preflight)
     if (req.method === 'OPTIONS') {
-        // Establecemos los encabezados de acceso para el navegador
-        res.header('Access-Control-Allow-Origin', req.headers.origin || 'https://*.vercel.app');
-        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
-        res.header('Access-Control-Allow-Credentials', 'true');
-        res.header('Access-Control-Max-Age', '3600'); 
-        
-        // Respondemos 204 para que el navegador envíe el POST
+        // Respondemos 204 No Content para que el navegador envíe el POST
         return res.sendStatus(204);
     }
-    // Si no es OPTIONS, pasamos al siguiente middleware
+    
+    // 5. Continuar para peticiones POST/GET
     next();
 });
 // ***************************************************************
 
-// Aplicar CORS para la validación de las peticiones POST/GET
-app.use(cors(corsOptions)) 
+// IMPORTANTE: NO usamos app.use(cors(corsOptions)) aquí
 
 app.use(express.json())
 
