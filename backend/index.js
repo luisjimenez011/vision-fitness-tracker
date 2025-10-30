@@ -7,52 +7,41 @@ const workoutRoutes = require('./src/routes/workoutRoutes');
 const userRoutes = require('./src/routes/userRoutes'); 
 
 
-// 1. Definir los patrones (strings fijos para local y la expresión regular para Vercel)
-const fixedOrigins = [
-    // Orígenes locales fijos
+// 1. Definir los orígenes permitidos
+const allowedOrigins = [
+    // La librería 'cors' ahora maneja correctamente el wildcard (*)
+    // Esto permite cualquier subdominio de Vercel (Frontend App, Previews)
+    'https://*.vercel.app', 
+    
+    // Orígenes locales para desarrollo
     'http://localhost:3000', 
-    'http://localhost:5173',
+    'http://localhost:5173' 
 ];
 
-// 2. Expresión regular para permitir CUALQUIER subdominio que termine en .vercel.app
-// Esto coincide con tu dominio de app (vision-fitness-tracker.vercel.app) y el temporal (con IDs)
-const vercelPattern = /\.vercel\.app$/;
-
-// 3. Opciones de configuración de CORS
+// 2. Opciones de configuración de CORS SIMPLIFICADAS
 const corsOptions = {
-    origin: function (origin, callback) {
-        // Permitir si no hay origen (ej. Postman o llamadas internas)
-        if (!origin) {
-            return callback(null, true);
-        }
-        
-        // Comprobar si es un origen fijo (local)
-        if (fixedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-
-        // Comprobar si coincide con el patrón de Vercel
-        // La URL de Vercel (https://vision-fitness-tracker.vercel.app) pasará esta prueba
-        if (vercelPattern.test(origin)) {
-            return callback(null, true);
-        }
-        
-        // Si no coincide con ninguna regla, denegar
-        callback(new Error('Not allowed by CORS'));
-    },
+    // Pasar el array con el wildcard permite a la librería 'cors' manejar la lógica
+    // Esto es mucho más fiable en entornos Serverless (Vercel)
+    origin: allowedOrigins,
+    
+    // Métodos necesarios para las peticiones REST
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    
+    // Permite que se envíen cookies y headers de autenticación (tokens)
     credentials: true, 
+    
+    // Encabezados que el cliente puede enviar (necesario para JWT y Content-Type)
+    allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 const app = express()
 
-// Aplicar CORS con las opciones de lista blanca y Regex
+// Aplicar CORS (solución final)
 app.use(cors(corsOptions)) 
 
 app.use(express.json())
 
-// Rutas
-// Vercel está ruteando correctamente a esta función, por lo que estas rutas ahora deberían funcionar
+// Rutas (se mantiene la lógica de /api/... para consistencia, aunque Vercel ya rutea por ti)
 app.use('/api/auth', authRoutes)
 app.use('/api/routine', routineRoutes);
 app.use('/api/workout', workoutRoutes); 
@@ -60,5 +49,5 @@ app.use('/api/profile', userRoutes);
 
 
 // ¡EL CAMBIO CLAVE PARA VERCEL!
-// Esto asegura que Express se exporte como la función Serverless esperada por Vercel.
+// Exportar la aplicación Express como una función Serverless
 module.exports = app;
