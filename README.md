@@ -23,9 +23,8 @@ Inestabilidad Observada: En ocasiones, la API de Gemini puede responder con erro
 
 ➡️ Impacto: Durante estos periodos, las siguientes funciones se verán afectadas temporalmente:
 
-Generación de Rutinas con IA.
-
-Análisis avanzado (si usas la IA para interpretar datos).
+  -Generación de Rutinas con IA.
+  -Análisis avanzado.
 ---
 
 ## 💡 Características Principales
