@@ -22,9 +22,8 @@ La funcionalidad principal de la aplicación depende de la API de Gemini (Google
 Inestabilidad Observada: En ocasiones, la API de Gemini puede responder con errores de sobrecarga de servicio (503 UNAVAILABLE).
 
 ➡️ Impacto: Durante estos periodos, las siguientes funciones se verán afectadas temporalmente:
+Generación de Rutinas con IA y Análisis avanzado.
 
-  -Generación de Rutinas con IA.
-  -Análisis avanzado.
 ---
 
 ## 💡 Características Principales
