@@ -20,7 +20,7 @@ async function register(req, res) {
   
   try {
     const userId = await authService.registerUser(name, email, password);
-    return res.status(201).json({ userId });
+    return res.status(200).json({ userId });
   } catch (err) {
     console.error('Error en registro de usuario:', err);
     return res.status(500).json({ error: 'Error interno del servidor' });
