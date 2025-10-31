@@ -91,18 +91,53 @@ function HomePage() {
 
     /**
      * Maneja el guardado de la rutina generada.
+     * ESTA FUNCIÓN FUE CORREGIDA PARA ENVIAR EL PAYLOAD CON LA ESTRUCTURA ESPERADA
+     * POR EL BACKEND, INCLUYENDO plan_json y workouts.
      * @param {object} routineToSave - La rutina a persistir en el backend.
      */
     const handleSaveRoutine = async (routineToSave) => {
         setLoading(true);
         setError('');
         setSuccessMessage('');
+
+        
+        // Replicamos el formato de RoutineCreatePage.jsx para que pase la validación
+        // Joi y el guardado en la columna 'plan_json' de la BD.
+        const apiPayload = {
+            name: routineToSave.name || 'Rutina Generada por IA',
+            description: routineToSave.description || 'Rutina generada por el asistente de IA.',
+            
+            // 1. Esto es lo que faltaba: El objeto completo anidado para la columna plan_json.
+            plan_json: routineToSave, 
+            
+            // 2. Incluimos 'workouts' a nivel superior para el Joi Validator del backend.
+            workouts: routineToSave.workouts, 
+        };
+
         try {
-            const response = await apiClient.post('/routine/save', routineToSave);
-            setSuccessMessage(response.data.message);
+            // Enviamos el payload corregido
+            const response = await apiClient.post('/routine/save', apiPayload); 
+            
+            // Usamos el mensaje de éxito del backend o un mensaje por defecto.
+            setSuccessMessage(response.data.message || 'Rutina guardada con éxito.');
+
+            // Opcional: Redirigir al usuario
+            // setTimeout(() => navigate("/routines"), 1500); 
+            
         } catch (err) {
-            const errorMessage = err.response?.data?.error || 'Error al guardar la rutina.';
-            setError(errorMessage);
+            console.error("Error al guardar la rutina (Frontend):", err); 
+
+            // Manejo del error
+            const errorMessage = err.response?.data?.error || 'Error del servidor al guardar la rutina.';
+            
+            // Si el error es 500 debido a una respuesta incorrecta PERO sí se guardó,
+            // (que fue tu suposición original), podrías usar esta lógica para UX:
+            if (err.response && err.response.status === 500 && err.response.data.error.includes("Error interno al guardar la rutina")) {
+                 setError("¡Advertencia! Hubo un error al recibir la confirmación, pero la rutina puede haberse guardado. Revisa tu lista de rutinas.");
+            } else {
+                 setError(errorMessage);
+            }
+            
         } finally {
             setLoading(false);
         }
